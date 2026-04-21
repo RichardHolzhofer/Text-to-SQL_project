@@ -1,0 +1,334 @@
+version: 2
+
+models:
+  - name: dbt_stg_customers
+    description: >
+      This table has information about the customer and its location. Use it to identify unique customers in the orders table and to find the orders delivery location.
+      Each order is assigned to a unique customer_id. This means that the same customer will get different ids for different orders.
+      The purpose of having a customer_unique_id is to allow identifying customers that made repurchases.
+    columns:
+      - name: customer_id
+        description: "An internal key to link all orders from this customer session. Unique per order."
+        tests:
+          - unique
+          - not_null
+      - name: customer_unique_id
+        description: "The unique identifier of the human being (Natural Key)."
+        tests:
+          - not_null
+      - name: customer_zip_code
+        description: "First five digits of customer zip code."
+        tests:
+          - not_null
+      - name: customer_city
+        description: "Customer city name."
+        tests:
+          - not_null
+      - name: customer_state
+        description: "Customer state."
+        tests:
+          - not_null
+      - name: ingested_at_utc
+        description: "The UTC timestamp when this record was loaded into Snowflake."
+        tests:
+          - not_null
+      - name: source_file
+        description: "The name of the raw CSV file this record originated from."
+        tests:
+          - not_null
+
+  - name: dbt_stg_category_translation
+    description: "A mapping table to translate Portuguese product category names into English."
+    columns:
+      - name: product_category_name
+        description: "The original category name in Portuguese."
+        tests:
+          - unique
+          - not_null
+      - name: product_category_name_english
+        description: "The English translation of the product category."
+        tests:
+          - unique
+          - not_null
+
+  - name: dbt_stg_geolocation
+    description: "This table has information about Brazilian zip codes and its lat/lng coordinates. Note: Not a 1:1 master list."
+    columns:
+      - name: geolocation_zip_code
+        description: "First 5 digits of zip code."
+        tests:
+          - not_null
+      - name: geolocation_lat
+        description: "Latitude coordinate."
+        tests:
+          - not_null
+      - name: geolocation_lng
+        description: "Longitude coordinate."
+        tests:
+          - not_null
+      - name: geolocation_city
+        description: "City name."
+        tests:
+          - not_null
+      - name: geolocation_state
+        description: "State name."
+        tests:
+          - not_null
+      - name: ingested_at_utc
+        description: "The UTC timestamp when this record was loaded into Snowflake."
+        tests:
+          - not_null
+      - name: source_file
+        description: "The name of the raw CSV file this record originated from."
+        tests:
+          - not_null
+
+  - name: dbt_stg_order_items
+    description: "This table includes data about the items purchased within each order."
+    columns:
+      - name: order_id
+        description: "Order unique identifier."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dbt_stg_orders')
+                field: order_id
+      - name: order_item_id
+        description: "Sequential number identifying number of items included in the same order."
+        tests:
+          - not_null
+      - name: product_id
+        description: "Product unique identifier."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dbt_stg_products')
+                field: product_id
+      - name: seller_id
+        description: "Seller unique identifier."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dbt_stg_sellers')
+                field: seller_id
+      - name: shipping_limit_date
+        description: "Shows the seller shipping limit date for handling the order over to the logistic partner."
+        tests:
+          - not_null
+      - name: price
+        description: "Item price."
+        tests:
+          - not_null
+      - name: freight_value
+        description: "Item freight value (if an order has more than one item the freight value is split between items)."
+        tests:
+          - not_null
+      - name: ingested_at_utc
+        description: "The UTC timestamp when this record was loaded into Snowflake."
+        tests:
+          - not_null
+      - name: source_file
+        description: "The name of the raw CSV file this record originated from."
+        tests:
+          - not_null
+
+  - name: dbt_stg_order_payments
+    description: "This table includes data about the orders payment options."
+    columns:
+      - name: order_id
+        description: "Payment details. Note: order_id is NOT unique here (multiple payments per order)."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dbt_stg_orders')
+                field: order_id
+      - name: payment_sequential
+        description: "A customer may pay an order with more than one payment method. If so, a sequence is created."
+        tests:
+          - not_null
+      - name: payment_type
+        description: "Method of payment chosen by the customer."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['credit_card', 'boleto', 'voucher', 'debit_card', 'not_defined']
+      - name: payment_installments
+        description: "Number of installments chosen by the customer."
+        tests:
+          - not_null
+      - name: payment_value
+        description: "Transaction value."
+        tests:
+          - not_null
+      - name: ingested_at_utc
+        description: "The UTC timestamp when this record was loaded into Snowflake."
+        tests:
+          - not_null
+      - name: source_file
+        description: "The name of the raw CSV file this record originated from."
+        tests:
+          - not_null
+
+  - name: dbt_stg_order_reviews
+    description: >
+      This table includes data about the reviews made by the customers.
+      Once the customer receives the product, they get a satisfaction survey.
+    columns:
+      - name: review_id
+        description: "Review identifier. Note: Not unique at this grain as one review can apply to multiple orders."
+        tests:
+          - not_null
+      - name: order_id
+        description: "Order identifier. Note: Not unique here as a customer may submit multiple reviews for one order."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dbt_stg_orders')
+                field: order_id
+      - name: review_score
+        description: "Note ranging from 1 to 5."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4, 5]
+      - name: review_comment_title
+        description: "Comment title from the review left by the customer."
+      - name: review_comment_message
+        description: "Comment message from the review left by the customer."
+      - name: review_creation_date
+        description: "Date in which the satisfaction survey was sent to the customer."
+        tests:
+          - not_null
+      - name: review_answer_timestamp
+        description: "Satisfaction survey answer timestamp."
+        tests:
+          - not_null
+      - name: ingested_at_utc
+        description: "The UTC timestamp when this record was loaded into Snowflake."
+        tests:
+          - not_null
+      - name: source_file
+        description: "The name of the raw CSV file this record originated from."
+        tests:
+          - not_null
+
+  - name: dbt_stg_orders
+    description: "This is the core table. From each order you might find all other information."
+    columns:
+      - name: order_id
+        description: "Unique identifier of the order."
+        tests:
+          - unique
+          - not_null
+      - name: customer_id
+        description: "An internal key to link to the customers table. Matches the customer_key in staging_customers."
+        tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dbt_stg_customers')
+                field: customer_id
+      - name: order_status
+        description: "Reference to the order status (delivered, shipped, etc)."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['delivered', 'shipped', 'canceled', 'invoiced', 'processing', 'approved', 'unavailable', 'created', 'unknown']
+      - name: order_purchase_timestamp
+        description: "Shows the purchase timestamp."
+        tests:
+          - not_null
+      - name: order_approved_at
+        description: "Shows the payment approval timestamp."
+      - name: order_delivered_carrier_date
+        description: "Shows the order posting timestamp."
+      - name: order_delivered_customer_date
+        description: "Shows the actual order delivery date to the customer."
+      - name: order_estimated_delivery_date
+        description: "Shows the estimated delivery date informed at the purchase moment."
+      - name: ingested_at_utc
+        description: "The UTC timestamp when this record was loaded into Snowflake."
+        tests:
+          - not_null
+      - name: source_file
+        description: "The name of the raw CSV file this record originated from."
+        tests:
+          - not_null
+
+  - name: dbt_stg_products
+    description: "This table includes data about the products sold by Olist."
+    columns:
+      - name: product_id
+        description: "Unique product identifier."
+        tests:
+          - unique
+          - not_null
+      - name: product_category_name
+        description: "Root category of product."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dbt_stg_category_translation')
+                field: product_category_name
+              config:
+                severity: warn
+      - name: product_name_length
+        description: "Number of characters extracted from the product name."
+      - name: description_length
+        description: "Number of characters extracted from the product description."
+      - name: product_photos_qty
+        description: "Number of product published photos."
+      - name: product_weight_g
+        description: "Product weight measured in grams."
+      - name: product_lenght_cm
+        description: "Product length measured in centimeters."
+      - name: product_height_cm
+        description: "Product height measured in centimeters."
+      - name: product_width_cm
+        description: "Product width measured in centimeters."
+      - name: ingested_at_utc
+        description: "The UTC timestamp when this record was loaded into Snowflake."
+        tests:
+          - not_null
+      - name: source_file
+        description: "The name of the raw CSV file this record originated from."
+        tests:
+          - not_null
+
+  - name: dbt_stg_sellers
+    description: "This table includes data about the sellers that fulfilled orders made at Olist. Use it to find the seller location and to identify which seller fulfilled each product."
+    columns:
+      - name: seller_id
+        description: "Seller unique identifier."
+        tests:
+          - not_null
+          - unique
+      - name: seller_zip_code
+        description: "First 5 digits of seller zip code."
+        tests:
+          - not_null
+      - name: seller_city
+        description: "Seller city name."
+        tests:
+          - not_null
+      - name: seller_state
+        description: "Seller state."
+        tests:
+          - not_null
+      - name: ingested_at_utc
+        description: "The UTC timestamp when this record was loaded into Snowflake."
+        tests:
+          - not_null
+      - name: source_file
+        description: "The name of the raw CSV file this record originated from."
+        tests:
+          - not_null

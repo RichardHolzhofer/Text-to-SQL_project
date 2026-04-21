@@ -1,0 +1,14 @@
+version: 2
+
+sources:
+  - name: dbt_stg
+    schema: raw
+    tables:
+      - name: customers
+      - name: geolocation
+      - name: order_items
+      - name: order_payments
+      - name: order_reviews
+      - name: orders
+      - name: products
+      - name: sellers
