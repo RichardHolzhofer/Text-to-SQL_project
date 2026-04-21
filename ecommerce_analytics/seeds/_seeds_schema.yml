@@ -1,0 +1,17 @@
+version: 2
+
+seeds:
+  - name: product_category_name_translation
+    description: "A mapping table to translate Portuguese product category names into English."
+    columns:
+      - name: product_category_name
+        description: "The original category name in Portuguese (matches the products table)."
+        tests:
+          - unique
+          - not_null
+
+      - name: product_category_name_english
+        description: "The English translation of the product category."
+        tests:
+          - unique
+          - not_null

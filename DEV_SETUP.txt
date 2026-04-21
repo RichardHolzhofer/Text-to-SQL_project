@@ -1,0 +1,29 @@
+# ENVIRONMENT SETUP CHEAT SHEET
+
+If you reboot your PC or restart your terminal, run the appropriate command below 
+to load your .env credentials so that dbt and pre-commit can find them.
+
+---
+
+### FOR BASH (Linux/Git Bash/macOS)
+Run this command from the root directory:
+
+export $(grep -v '^#' .env | xargs)
+
+---
+
+### FOR POWERSHELL (Windows Default)
+Run this command from the root directory:
+
+Get-Content .env | ForEach-Object {
+    if ($_ -match "^(?<name>[^=]+)=(?<value>.*)$") {
+        [System.Environment]::SetEnvironmentVariable($Matches.name, $Matches.value, "Process")
+    }
+}
+
+---
+
+### VERIFYING
+After running the command, you can verify it worked by typing:
+echo $LOADER_SNOWFLAKE_ACCOUNT  # Bash
+$env:LOADER_SNOWFLAKE_ACCOUNT    # PowerShell
