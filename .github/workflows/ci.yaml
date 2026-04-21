@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Linting and Formatting
+    runs-on: ubuntu-latest
+    
+    # Passing secrets as environment variables for SQLFluff (dbt templater)
+    env:
+      LOADER_SNOWFLAKE_ACCOUNT: ${{ secrets.LOADER_SNOWFLAKE_ACCOUNT }}
+      LOADER_SNOWFLAKE_USER: ${{ secrets.LOADER_SNOWFLAKE_USER }}
+      LOADER_SNOWFLAKE_PASSWORD: ${{ secrets.LOADER_SNOWFLAKE_PASSWORD }}
+      LOADER_SNOWFLAKE_ROLE: ${{ secrets.LOADER_SNOWFLAKE_ROLE }}
+      LOADER_SNOWFLAKE_WAREHOUSE: ${{ secrets.LOADER_SNOWFLAKE_WAREHOUSE }}
+      LOADER_SNOWFLAKE_DATABASE: ${{ secrets.LOADER_SNOWFLAKE_DATABASE }}
+      LOADER_SNOWFLAKE_SCHEMA: ${{ secrets.LOADER_SNOWFLAKE_SCHEMA }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Ruff Check
+        run: uv run ruff check .
+
+      - name: Ruff Format
+        run: uv run ruff format --check .
+
+      - name: SQLFluff Lint
+        run: uv run sqlfluff lint . --dialect snowflake
