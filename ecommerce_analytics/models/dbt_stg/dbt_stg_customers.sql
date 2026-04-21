@@ -6,11 +6,11 @@ renamed AS (
     SELECT
         customer_id,
         customer_unique_id,
-        customer_zip_code_prefix AS customer_zip_code,
         _ingested_at AS ingested_at_utc,
         _file_name AS source_file,
-        COALESCE(customer_city, 'unknown') AS customer_city,
-        COALESCE(customer_state, 'unknown') AS customer_state
+        TRIM(customer_zip_code_prefix) AS customer_zip_code,
+        COALESCE(TRIM(LOWER(customer_city)), 'unknown') AS customer_city,
+        COALESCE(TRIM(LOWER(customer_state)), 'unknown') AS customer_state
     FROM source
 )
 

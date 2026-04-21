@@ -5,11 +5,11 @@ WITH source AS (
 renamed AS (
     SELECT
         seller_id,
-        seller_zip_code_prefix AS seller_zip_code,
         _ingested_at AS ingested_at_utc,
         _file_name AS source_file,
-        COALESCE(seller_city, 'unknown') AS seller_city,
-        COALESCE(seller_state, 'unknown') AS seller_state
+        TRIM(seller_zip_code_prefix) AS seller_zip_code,
+        COALESCE(TRIM(LOWER(seller_city)), 'unknown') AS seller_city,
+        COALESCE(TRIM(LOWER(seller_state)), 'unknown') AS seller_state
     FROM source
 )
 

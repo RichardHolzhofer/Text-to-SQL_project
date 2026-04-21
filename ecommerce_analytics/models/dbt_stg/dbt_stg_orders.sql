@@ -8,7 +8,7 @@ renamed AS (
         customer_id,
         _ingested_at AS ingested_at_utc,
         _file_name AS source_file,
-        COALESCE(order_status, 'unknown') AS order_status,
+        COALESCE(TRIM(LOWER(order_status)), 'unknown') AS order_status,
         CAST(order_purchase_timestamp AS TIMESTAMP WITHOUT TIME ZONE)
             AS order_purchase_timestamp,
         CAST(order_approved_at AS TIMESTAMP WITHOUT TIME ZONE)

@@ -34,15 +34,12 @@ latest_location AS (
         row_number() OVER (
             PARTITION BY c.customer_unique_id
             ORDER BY
-                -- 1. Trustworthy status first
                 CASE
                     WHEN o.order_status = 'delivered' THEN 1
                     WHEN o.order_status = 'unknown' THEN 3
                     ELSE 2
                 END,
-                -- 2. Most recent time second
                 o.order_purchase_timestamp DESC,
-                -- 3. Tie-breaker third
                 o.order_id DESC
         ) AS rn
     FROM customers AS c

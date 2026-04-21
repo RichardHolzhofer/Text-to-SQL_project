@@ -4,8 +4,9 @@ WITH source AS (
 
 renamed AS (
     SELECT
-        product_category_name,
-        product_category_name_english
+        TRIM(LOWER(product_category_name)) AS product_category_name,
+        TRIM(LOWER(product_category_name_english))
+            AS product_category_name_english
     FROM source
 )
 

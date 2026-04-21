@@ -8,7 +8,7 @@ renamed AS (
         _ingested_at AS ingested_at_utc,
         _file_name AS source_file,
         CAST(payment_sequential AS INTEGER) AS payment_sequential,
-        COALESCE(payment_type, 'not_defined') AS payment_type,
+        COALESCE(TRIM(LOWER(payment_type)), 'not_defined') AS payment_type,
         COALESCE(CAST(payment_installments AS INTEGER), 1)
             AS payment_installments,
         COALESCE(CAST(payment_value AS DECIMAL(10, 2)), 0) AS payment_value

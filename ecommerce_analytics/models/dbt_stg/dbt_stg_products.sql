@@ -7,7 +7,8 @@ renamed AS (
         product_id,
         _ingested_at AS ingested_at_utc,
         _file_name AS source_file,
-        COALESCE(product_category_name, 'unknown') AS product_category_name,
+        COALESCE(TRIM(LOWER(product_category_name)), 'unknown')
+            AS product_category_name,
         COALESCE(CAST(product_name_length AS INTEGER), 0)
             AS product_name_length,
         COALESCE(CAST(description_length AS INTEGER), 0) AS description_length,

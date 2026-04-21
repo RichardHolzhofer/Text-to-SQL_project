@@ -75,3 +75,177 @@ models:
           - accepted_values:
               arguments:
                 values: [0, 1]
+
+  - name: dbt_int_order_items
+    description: >
+      Enriched order items table. Joins raw items with product categories 
+      (translated to English) and seller location data. 
+      The grain remains one row per item within an order.
+    columns:
+      - name: order_id
+        description: "Foreign key to the orders table."
+        tests:
+          - not_null
+      - name: order_item_id
+        description: "A sequential number identifying the item within an order."
+        tests:
+          - not_null
+      - name: product_id
+        description: "The unique identifier of the product."
+        tests:
+          - not_null
+      - name: seller_id
+        description: "The unique identifier of the seller."
+        tests:
+          - not_null
+      - name: price
+        description: "The item price."
+        tests:
+          - not_null
+      - name: freight_value
+        description: "The freight (shipping) value for the item."
+        tests:
+          - not_null
+      - name: product_category_name
+        description: "Original Portuguese category name from the products table."
+      - name: product_category_name_english
+        description: >
+          Cleaned English category name. Uses translation file where available, 
+          otherwise falls back to the Portuguese name. Formatted in Title Case 
+          without underscores.
+        tests:
+          - not_null
+      - name: seller_city
+        description: "City where the seller is located."
+      - name: seller_state
+        description: "State where the seller is located."
+  
+  - name: dbt_int_order_reviews
+    description: >
+      Intermediate table that aggregates reviews to a single row per order. 
+      Calculates average scores while preserving the latest comment text and 
+      response timestamps.
+    columns:
+      - name: order_id
+        description: "The unique identifier for the order."
+        tests:
+          - unique
+          - not_null
+      - name: avg_review_score
+        description: "The average score given by the customer for this order."
+        tests:
+          - not_null
+      - name: total_reviews_received
+        description: "The number of review entries found for this order."
+        tests:
+          - not_null
+      - name: review_comment_title
+        description: "The title of the most recent review comment."
+      - name: review_comment_message
+        description: "The actual text message of the most recent review."
+      - name: latest_review_creation_date
+        description: "The date the most recent review was submitted by the customer."
+      - name: latest_review_answer_timestamp
+        description: "The timestamp when the seller or Olist replied to the review."
+
+  - name: dbt_int_orders
+    description: >
+      The "Master Order" intermediate table. It consolidates the core order lifecycle 
+      with customer geography, detailed payment breakdowns, and full review metadata. 
+      This table is unique per order_id and serves as the foundation for Order Fact tables.
+    columns:
+      - name: order_id
+        description: "Primary key. The unique identifier for the order."
+        tests:
+          - unique
+          - not_null
+      - name: customer_unique_id
+        description: "The unique identifier for the human customer (from int_customers)."
+        tests:
+          - not_null
+      - name: customer_city
+        description: "The city of the customer at the time of their latest order."
+      - name: customer_state
+        description: "The state of the customer."
+      - name: customer_zip_code
+        description: "The zip code of the customer."
+      - name: order_status
+        description: "Current status of the order (e.g., delivered, canceled)."
+        tests:
+          - not_null
+      - name: order_purchase_timestamp
+        description: "The timestamp when the order was placed."
+        tests:
+          - not_null
+      - name: total_order_value
+        description: "Total value paid including freight and all payment methods."
+        tests:
+          - not_null
+      - name: credit_card_amount
+        description: "Total amount of the order paid via credit card."
+        tests:
+          - not_null
+      - name: voucher_amount
+        description: "Total amount of the order paid via vouchers."
+        tests:
+          - not_null
+      - name: boleto_amount
+        description: "Total amount of the order paid via boleto."
+        tests:
+          - not_null
+      - name: has_voucher_payment
+        description: "Flag (1/0) indicating if a voucher was used."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+      - name: max_installments
+        description: "The highest number of installments used in this order's payments."
+      - name: avg_review_score
+        description: "Average score across all reviews for this order."
+      - name: review_comment_title
+        description: "The title of the latest review comment."
+      - name: review_comment_message
+        description: "The text content of the latest review comment."
+      - name: latest_review_creation_date
+        description: "Timestamp when the latest review was created."
+      - name: latest_review_answer_timestamp
+        description: "Timestamp when the review was answered by the system/seller."
+      - name: is_delivered_on_time
+        description: "Flag (1/0) comparing actual delivery date vs estimated delivery date."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+  
+  - name: dbt_int_geolocation
+    description: >
+      A deduplicated lookup table for Brazilian zip codes. 
+      It provides a single 'centroid' (average lat/lng) and the most frequent 
+      city/state name for each zip code.
+    columns:
+      - name: geolocation_zip_code
+        description: "Primary key. The first 5 digits of the Brazilian zip code."
+        tests:
+          - unique
+          - not_null
+      - name: avg_lat
+        description: "The averaged latitude coordinate for this zip code prefix."
+        tests:
+          - not_null
+      - name: avg_lng
+        description: "The averaged longitude coordinate for this zip code prefix."
+        tests:
+          - not_null
+      - name: geolocation_city
+        description: >
+          The most frequently occurring city name for this zip code. 
+          Standardized to lowercase for consistent joining and Text-to-SQL querying.
+        tests:
+          - not_null
+      - name: geolocation_state
+        description: "The 2-letter state abbreviation (standardized to lowercase)."
+        tests:
+          - not_null

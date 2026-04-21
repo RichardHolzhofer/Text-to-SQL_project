@@ -4,13 +4,13 @@ WITH source AS (
 
 renamed AS (
     SELECT
-        geolocation_zip_code_prefix AS geolocation_zip_code,
         _ingested_at AS ingested_at_utc,
         _file_name AS source_file,
+        TRIM(geolocation_zip_code_prefix) AS geolocation_zip_code,
         CAST(geolocation_lat AS FLOAT) AS geolocation_lat,
         CAST(geolocation_lng AS FLOAT) AS geolocation_lng,
-        COALESCE(geolocation_city, 'unknown') AS geolocation_city,
-        COALESCE(geolocation_state, 'unknown') AS geolocation_state
+        COALESCE(TRIM(LOWER(geolocation_city)), 'unknown') AS geolocation_city,
+        COALESCE(TRIM(LOWER(geolocation_state)), 'unknown') AS geolocation_state
     FROM source
 )
 
