@@ -25,4 +25,4 @@ FROM geolocation AS g
 INNER JOIN ranked_names AS n
     ON g.geolocation_zip_code = n.geolocation_zip_code
 WHERE n.rn = 1
-GROUP BY 1, 4, 5
+GROUP BY 1, 2, 3

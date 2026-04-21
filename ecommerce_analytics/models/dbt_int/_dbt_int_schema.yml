@@ -159,16 +159,10 @@ models:
         tests:
           - unique
           - not_null
-      - name: customer_unique_id
-        description: "The unique identifier for the human customer (from int_customers)."
+      - name: customer_id
+        description: "Foreign key to customers table."
         tests:
           - not_null
-      - name: customer_city
-        description: "The city of the customer at the time of their latest order."
-      - name: customer_state
-        description: "The state of the customer."
-      - name: customer_zip_code
-        description: "The zip code of the customer."
       - name: order_status
         description: "Current status of the order (e.g., delivered, canceled)."
         tests:
