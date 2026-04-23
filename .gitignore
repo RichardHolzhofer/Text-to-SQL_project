@@ -207,4 +207,11 @@ marimo/_lsp/
 __marimo__/
 
 # Helper
-helper.ipynb_checkpoints
+helper.ipynb
+force_tool_call.ipynb
+
+# Pre-commit cache
+.pre-commit-cache/
+
+# Deepeval
+.deepeval/
