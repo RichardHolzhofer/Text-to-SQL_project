@@ -1,4 +1,4 @@
-from ingestion.exception import DataLoadError
+from embeddings.exception import EmbeddingCreationError
 from ingestion.utils import get_connection
 from embeddings.logger import logger
 
@@ -66,7 +66,7 @@ def create_embeddings(
         )
 
     except Exception as e:
-        raise DataLoadError(e, __import__("sys"))
+        raise EmbeddingCreationError(e)
 
     finally:
         # Always close Snowflake resources, even if the SQL fails midway.
