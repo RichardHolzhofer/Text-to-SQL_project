@@ -1,5 +1,4 @@
 import os
-import sys
 from jinja2 import Template
 from ingestion.utils import get_connection
 from ingestion.logger import logger
@@ -60,7 +59,7 @@ def insert_schema(raw_schema_name: str) -> None:
 
     except Exception as e:
         # Wrap any error into our custom IngestionException for detailed logging
-        raise IngestionException(e, sys)
+        raise IngestionException(e)
 
 
 if __name__ == "__main__":

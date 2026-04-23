@@ -1,4 +1,3 @@
-import sys
 from ingestion.utils import get_connection, load_config
 from ingestion.logger import logger
 from ingestion.exception import DataLoadError
@@ -86,7 +85,7 @@ def load_raw_data(raw_schema_name: str, stage_name: str) -> None:
 
     except Exception as e:
         # Wrap table loading errors with detailed info
-        raise DataLoadError(e, sys)
+        raise DataLoadError(e)
 
 
 if __name__ == "__main__":
