@@ -32,3 +32,6 @@ def get_logger(name: str) -> logging.Logger:
         logger.addHandler(file_handler)
 
     return logger
+
+
+logger = get_logger("main")

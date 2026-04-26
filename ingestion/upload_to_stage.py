@@ -1,7 +1,7 @@
 import os
 from ingestion.utils import get_connection
 from ingestion.logger import logger
-from ingestion.exception import SnowflakeConnectionError
+from src.exceptions.exception import SnowflakeConnectionError
 
 
 def put_to_stage(raw_schema_name: str, stage_name: str) -> None:

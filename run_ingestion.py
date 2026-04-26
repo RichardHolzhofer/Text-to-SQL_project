@@ -3,7 +3,7 @@ from ingestion.create_schema import insert_schema
 from ingestion.upload_to_stage import put_to_stage
 from ingestion.load_to_raw import load_raw_data
 from ingestion.logger import logger
-from ingestion.exception import IngestionException
+from src.exceptions.exception import IngestionException
 
 
 def run_pipeline() -> None:

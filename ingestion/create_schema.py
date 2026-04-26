@@ -2,7 +2,7 @@ import os
 from jinja2 import Template
 from ingestion.utils import get_connection
 from ingestion.logger import logger
-from ingestion.exception import IngestionException
+from src.exceptions.exception import IngestionException
 
 
 def insert_schema(raw_schema_name: str) -> None:

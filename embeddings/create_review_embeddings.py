@@ -1,4 +1,4 @@
-from embeddings.exception import EmbeddingCreationError
+from src.exceptions.exception import EmbeddingCreationError
 from ingestion.utils import get_connection
 from embeddings.logger import logger
 

@@ -30,3 +30,31 @@ class PipelineException(Exception):
 
     def __str__(self) -> str:
         return self.error_message
+
+
+class ConfigError(PipelineException):
+    """Raised when loading runtime configuration fails."""
+
+
+class SnowflakeConfigError(PipelineException):
+    """Raised when creating a Snowflake connection fails."""
+
+
+class EmbeddingsException(PipelineException):
+    """Base exception class for the embeddings package."""
+
+
+class EmbeddingCreationError(EmbeddingsException):
+    """Raised when creating embeddings fails."""
+
+
+class IngestionException(PipelineException):
+    """Base exception class for the ingestion package."""
+
+
+class SnowflakeConnectionError(IngestionException):
+    """Raised when there is an issue connecting to Snowflake or during file transfer."""
+
+
+class DataLoadError(IngestionException):
+    """Raised when a COPY INTO command fails to load data into a table."""
