@@ -1,5 +1,4 @@
 import os
-import sys
 from ingestion.utils import get_connection
 from ingestion.logger import logger
 from ingestion.exception import SnowflakeConnectionError
@@ -64,7 +63,7 @@ def put_to_stage(raw_schema_name: str, stage_name: str) -> None:
 
     except Exception as e:
         # Catch and wrap connection/upload errors
-        raise SnowflakeConnectionError(e, sys)
+        raise SnowflakeConnectionError(e)
 
 
 if __name__ == "__main__":
