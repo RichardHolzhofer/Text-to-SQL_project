@@ -1,7 +1,8 @@
 import json
 from langchain.chat_models import init_chat_model
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 
-from src.states.state import Table, RelationshipDigest, Schema
+from src.states.state import Table, RelationshipDigest, Schema, SQLGenerator
 from src.utils.utils import load_prompt, load_yaml, dump_yaml
 from src.logger.logger import logger
 from src.config.config import Config
@@ -109,7 +110,58 @@ class TextToSQLNodes:
 
     def generate_sql(self, state: TextToSQLState):
         try:
-            pass
+            logger.info(
+                f"Generating SQL query for question: '{state.question}' (Iteration: {state.iteration_count})"
+            )
+
+            # Bind the LLM to our SQLGenerator schema
+            sql_extractor = self.llm.with_structured_output(SQLGenerator)
+
+            # Serialize the schema so the LLM can read it
+            schema_json = json.dumps(state.schema.model_dump(), indent=2)
+
+            # Load the prompt with dynamic context
+            base_messages = load_prompt(
+                "src/prompts/generate_sql.yaml",
+                {"schema_context": schema_json, "question": state.question},
+            )
+
+            # Convert loaded prompt into LangChain message objects
+            langchain_messages = []
+            for role, content in base_messages:
+                if role == "system":
+                    langchain_messages.append(SystemMessage(content=content))
+                else:
+                    langchain_messages.append(HumanMessage(content=content))
+
+            # Append real conversational history (if any)
+            if state.chat_history:
+                langchain_messages.extend(state.chat_history)
+
+            # Ephemeral Error Injection (Only for backend retries)
+            if (
+                state.is_valid_query is False
+                and state.generated_sql
+                and state.error_message
+            ):
+                logger.info("Injecting previous error into prompt for correction.")
+                langchain_messages.append(
+                    AIMessage(content=state.generated_sql.sql_query)
+                )
+                langchain_messages.append(
+                    HumanMessage(content=f"Execution Failed: {state.error_message}")
+                )
+
+            # Execute
+            generated = sql_extractor.invoke(langchain_messages)
+
+            logger.info("SQL generation successful.")
+            logger.info(
+                f"Thought Process snippet: {generated.thought_process[:100]}..."
+            )
+
+            return {"generated_sql": generated}
+
         except Exception as e:
             logger.exception("Failed to create SQL query.")
             raise SQLGenerationError(e)

@@ -116,8 +116,9 @@ class TextToSQLState(BaseModel):
     generated_sql: Optional[SQLGenerator] = None
 
     # Validation / Looping State
-    is_valid_query: bool = Field(
-        default=False, description="Flag set by a 'Validator' node."
+    is_valid_query: Optional[bool] = Field(
+        default=None,
+        description="Flag set by a 'Validator' node. None means not validated yet.",
     )
     error_message: Optional[str] = Field(
         default=None, description="The raw error string from Snowflake."

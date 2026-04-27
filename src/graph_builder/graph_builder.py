@@ -19,10 +19,12 @@ class TextToSQLGraph:
 
         # Nodes
         workflow.add_node("schema_builder_node", self.nodes.build_schema)
+        workflow.add_node("query_generator_node", self.nodes.generate_sql)
 
         # Edges
         workflow.set_entry_point("schema_builder_node")
-        workflow.add_edge("schema_builder_node", END)
+        workflow.add_edge("schema_builder_node", "query_generator_node")
+        workflow.add_edge("query_generator_node", END)
 
         # Compile and add checkpointer for memory
         self.graph = workflow.compile(checkpointer=self.memory)
@@ -51,3 +53,5 @@ if __name__ == "__main__":
             print(f" - {table.table_name}")
     else:
         print("Schema not found.")
+
+    print(result["generated_sql"])
