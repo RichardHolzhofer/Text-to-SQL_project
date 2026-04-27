@@ -22,7 +22,7 @@ def put_to_stage(raw_schema_name: str, stage_name: str) -> None:
         raw_schema_name = raw_schema_name.upper()
 
         # Get connection
-        conn = config.get_connection()
+        conn = config.get_connection(write_access=True)
         cursor = conn.cursor()
 
         # Select the schema

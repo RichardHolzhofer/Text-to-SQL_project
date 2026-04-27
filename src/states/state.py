@@ -1,5 +1,10 @@
+from typing import Annotated, Optional
 from pydantic import BaseModel, Field
 from typing_extensions import List, Literal
+from langchain_core.messages import BaseMessage
+from langgraph.graph.message import add_messages
+
+### States for schema extraction
 
 
 class ColumnTest(BaseModel):
@@ -80,4 +85,47 @@ class RelationshipDigest(BaseModel):
     relationships: List[ForeignKeyRelationship] = Field(
         default_factory=list,
         description="Explicit foreign key relationships between tables",
+    )
+
+
+### State for SQL generator
+
+
+class SQLGenerator(BaseModel):
+    thought_process: str = Field(
+        description="The 'Chain of Thought' reasoning before writing the SQL query."
+    )
+    sql_query: str = Field(
+        description="The actual Snowflake SQL query produced by the generator."
+    )
+
+
+### TextToSQLState main class
+
+
+class TextToSQLState(BaseModel):
+    question: str
+    chat_history: Annotated[List[BaseMessage], add_messages] = Field(
+        default_factory=list
+    )
+
+    # Schema extraction
+    schema: Optional[Schema] = None
+
+    # SQL Generation State
+    generated_sql: Optional[SQLGenerator] = None
+
+    # Validation / Looping State
+    is_valid_query: bool = Field(
+        default=False, description="Flag set by a 'Validator' node."
+    )
+    error_message: Optional[str] = Field(
+        default=None, description="The raw error string from Snowflake."
+    )
+    iteration_count: int = Field(
+        default=0, description="Counter for error-fixing loops."
+    )
+
+    answer: Optional[str] = Field(
+        default=None, description="Final natural language answer."
     )

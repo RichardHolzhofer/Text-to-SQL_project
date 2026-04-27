@@ -33,7 +33,7 @@ def create_embeddings(
             f"{target_schema}.{target_table}"
         )
 
-        conn = config.get_connection()
+        conn = config.get_connection(write_access=True)
         cursor = conn.cursor()
 
         # Create the side table

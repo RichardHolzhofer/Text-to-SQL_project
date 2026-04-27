@@ -1,26 +1,34 @@
 import json
 from langchain.chat_models import init_chat_model
-from dotenv import load_dotenv
 
 from src.states.state import Table, RelationshipDigest, Schema
 from src.utils.utils import load_prompt, load_yaml, dump_yaml
 from src.logger.logger import logger
-from src.exceptions.exception import SchemaBuildError, NodeException
-
-load_dotenv()
+from src.config.config import Config
+from src.exceptions.exception import SchemaBuildError, NodeException, SQLGenerationError
+from src.states.state import TextToSQLState
 
 
 class TextToSQLNodes:
-    def __init__(self):
+    def __init__(self, config: Config):
+        """
+        Initialize the node handler with shared configuration.
+
+        Args:
+            config (Config): The centralized configuration object.
+        """
         try:
+            self.config = config
             self.llm = init_chat_model("groq:openai/gpt-oss-120b")
-            logger.info("TextToSQLNodes initialized with LLM.")
+            self.max_retry = 3
+            logger.info("TextToSQLNodes initialized with LLM and Config.")
         except Exception as e:
             logger.exception("Failed to initialize TextToSQLNodes.")
             raise NodeException(e)
 
     def build_schema(
         self,
+        state: TextToSQLState,
         mart_schema_path="ecommerce_analytics/models/dbt_mrt/_dbt_mrt_schema.yml",
         enhancement_schema_path="embeddings/_embeddings_schema.yml",
     ):
@@ -59,7 +67,7 @@ class TextToSQLNodes:
 
                 # Load the prompt for table extraction
                 messages = load_prompt(
-                    "src/prompts/extract_canonical_table.yaml",
+                    "src/prompts/extract_table.yaml",
                     {"model_yaml": model_yaml_str},
                 )
 
@@ -93,8 +101,15 @@ class TextToSQLNodes:
             )
 
             logger.info("Unified schema build complete.")
-            return final_schema
+            return {"schema": final_schema}
 
         except Exception as e:
             logger.exception("Failed to build unified schema.")
             raise SchemaBuildError(e)
+
+    def generate_sql(self, state: TextToSQLState):
+        try:
+            pass
+        except Exception as e:
+            logger.exception("Failed to create SQL query.")
+            raise SQLGenerationError(e)
