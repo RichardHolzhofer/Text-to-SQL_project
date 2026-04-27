@@ -19,16 +19,21 @@ file_handler.setFormatter(formatter)
 
 def get_logger(name: str) -> logging.Logger:
     """
-    Return a named logger that writes to the shared project log file.
+    Return a named logger that writes to a timestamped project log file.
     """
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
 
-    if not any(
-        isinstance(handler, logging.FileHandler)
-        and getattr(handler, "baseFilename", None) == file_handler.baseFilename
-        for handler in logger.handlers
-    ):
+    # Avoid adding multiple handlers to the same logger if it's already configured
+    if not logger.handlers:
         logger.addHandler(file_handler)
+        # Also add a stream handler for console output
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
 
     return logger
+
+
+# Default logger for general use
+logger = get_logger("text-to-sql")

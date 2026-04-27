@@ -1,6 +1,5 @@
-from ingestion.utils import get_connection, load_config
-from ingestion.logger import logger
-from ingestion.exception import DataLoadError
+from src.exceptions.exception import DataLoadError
+from ingestion.config import config, logger
 
 
 def load_raw_data(raw_schema_name: str, stage_name: str) -> None:
@@ -23,24 +22,23 @@ def load_raw_data(raw_schema_name: str, stage_name: str) -> None:
         raw_schema_name = raw_schema_name.upper()
 
         # Get connection
-        conn = get_connection()
+        conn = config.get_connection()
         cursor = conn.cursor()
 
         # Set the current schema context
         cursor.execute(f"USE SCHEMA {raw_schema_name}")
 
         # Load the configuration mapping files to tables
-        config = load_config()
+        ingestion_config = config.load_ingestion_config()
 
         # Iterate through each file-to-table entry in config.yml
-        for item in config["files"]:
+        for item in ingestion_config["files"]:
             file_name = item["file"]
             table_name = item["table"]
 
             logger.info(f"Loading {file_name} into {table_name}...")
 
-            # Step 1: Dynamically get columns for the table (excluding metadata columns)
-            # This ensures that we only map CSV columns to the appropriate table columns.
+            # Dynamically get columns for the table (excluding metadata columns)
             cursor.execute(f"SHOW COLUMNS IN TABLE {table_name}")
             columns = [
                 row[2]
@@ -48,19 +46,18 @@ def load_raw_data(raw_schema_name: str, stage_name: str) -> None:
                 if row[2] not in ("_INGESTED_AT", "_FILE_NAME")
             ]
 
-            # Step 2: Construct the column mapping for the COPY INTO command
-            # We append _FILE_NAME because we will populate it using METADATA$FILENAME.
+            # Construct the column mapping for the COPY INTO command
+            # _FILE_NAME is appended so we can populate it using METADATA$FILENAME.
             col_list = ", ".join(columns) + ", _FILE_NAME"
 
-            # Step 3: Construct the value list for the SELECT transformation
-            # $1, $2, etc. refer to the columns in the CSV.
+            # Construct the value list for the SELECT transformation
+            # $1, $2, etc. refer to the columns in the CSV
             val_list = (
                 ", ".join([f"${i + 1}" for i in range(len(columns))])
                 + ", METADATA$FILENAME"
             )
 
-            # Step 4: Construct the final COPY INTO statement
-            # This uses a transformation (SELECT) to inject metadata during the load.
+            # Construct the final COPY INTO statement
             copy_sql = f"""
             COPY INTO {table_name} ({col_list})
             FROM (SELECT {val_list} FROM @{stage_name}/{file_name}.gz)
@@ -73,21 +70,20 @@ def load_raw_data(raw_schema_name: str, stage_name: str) -> None:
             )
             """
 
-            # Step 5: Execute the load
+            # Execute the load
             cursor.execute(copy_sql)
             logger.info(f"Successfully loaded {table_name}.")
 
         logger.info("All tables loaded successfully.")
 
-        # Step 6: Cleanup connection
+    except Exception as e:
+        raise DataLoadError(e)
+
+    finally:
+        # Cleanup connection
         cursor.close()
         conn.close()
 
-    except Exception as e:
-        # Wrap table loading errors with detailed info
-        raise DataLoadError(e)
-
 
 if __name__ == "__main__":
-    # Standard entry point for isolated testing
     load_raw_data(raw_schema_name="raw", stage_name="ecommerce_raw_stage")
