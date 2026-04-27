@@ -1,0 +1,19 @@
+version: 2
+
+models:
+  - name: dbt_mrt_review_embeddings
+    description: >
+      Vector embeddings table for order reviews. 
+      This table stores the high-dimensional vector representations of the 
+      'review_combined_text' column from the dbt_mrt_reviews table, 
+      enabling semantic search and similarity matching.
+    columns:
+      - name: order_id
+        description: "Primary Key and Foreign Key to dbt_mrt_orders / dbt_mrt_reviews."
+        tests:
+          - unique
+          - not_null
+      - name: review_combined_text_embedding
+        description: >
+          1024-dimensional vector embedding generated using the 
+          SNOWFLAKE.CORTEX.EMBED_TEXT_1024 ('multilingual-e5-large') model.
