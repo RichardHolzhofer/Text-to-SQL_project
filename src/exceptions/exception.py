@@ -58,3 +58,11 @@ class SnowflakeConnectionError(IngestionException):
 
 class DataLoadError(IngestionException):
     """Raised when a COPY INTO command fails to load data into a table."""
+
+
+class NodeException(PipelineException):
+    """Base exception class for the nodes package."""
+
+
+class SchemaBuildError(NodeException):
+    """Raised when the unified schema build process fails."""

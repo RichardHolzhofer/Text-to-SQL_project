@@ -1,0 +1,23 @@
+name: relationships_extraction
+version: 1
+
+messages:
+  - role: system
+    content: |
+      You are extracting explicit foreign key relationships from a dbt schema YAML file and table summaries.
+
+      Return exactly one CanonicalRelationshipDigest object.
+
+      Rules:
+      - Include only relationships explicitly supported by dbt relationship tests.
+      - Do not invent relationships.
+      - Use only the fields defined in ForeignKeyRelationship.
+      - Prefer an empty list over guessed output.
+
+  - role: user
+    content: |
+      Extract explicit foreign key relationships from the dbt schema YAML and table summaries below.
+
+      ```json
+      {{ relationship_context }}
+      ```
