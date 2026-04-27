@@ -1,61 +1,34 @@
 import os
 from pathlib import Path
 from typing import Any, Dict
-from typing import TYPE_CHECKING
-
 import yaml
 from dotenv import load_dotenv
+import snowflake.connector
+from snowflake.connector.connection import SnowflakeConnection
 
 from src.exceptions.exception import ConfigError, SnowflakeConfigError
-from src.logger.logger import logger
-
-if TYPE_CHECKING:
-    from snowflake.connector.connection import SnowflakeConnection
+from src.logger.logger import get_logger
 
 
 class Config:
     """
     Centralized configuration helper for the text-to-sql app.
+    Should be instantiated in each process with a specific logger name.
     """
 
-    _env_loaded = False
+    def __init__(self, logger_name: str = "text-to-sql"):
+        # Initialize the named logger via the centralized logger utility
+        self.logger = get_logger(logger_name)
 
-    @classmethod
-    def _load_env_once(cls) -> None:
-        """
-        Load environment variables from .env once per process.
-        """
-        if cls._env_loaded:
-            return
         load_dotenv()
-        cls._env_loaded = True
-        logger.info("Environment variables loaded from .env")
+        self.logger.info("Environment variables loaded from .env")
 
-    @classmethod
-    def get_env(
-        cls, key: str, default: str | None = None, required: bool = False
-    ) -> str | None:
-        """
-        Read one environment variable with optional required validation.
-        """
-        cls._load_env_once()
-        value = os.getenv(key, default)
-
-        if required and not value:
-            logger.error("Required environment variable is missing: %s", key)
-            raise ConfigError(
-                ValueError(f"Missing required environment variable: {key}")
-            )
-
-        return value
-
-    @staticmethod
-    def load_yaml(config_path: str | Path) -> Dict[str, Any]:
+    def load_yaml(self, config_path: str | Path) -> Dict[str, Any]:
         """
         Load and parse a YAML configuration file.
         """
         path = Path(config_path).resolve()
-        logger.info("Loading YAML configuration from %s", path)
+        self.logger.info(f"Loading YAML configuration from {path}")
 
         try:
             if not path.exists():
@@ -70,42 +43,33 @@ class Config:
             return content
 
         except Exception as error:
-            logger.exception("Failed to load YAML configuration: %s", path)
+            self.logger.exception(f"Failed to load YAML configuration: {path}")
             raise ConfigError(error) from error
 
-    @classmethod
-    def load_ingestion_config(cls) -> Dict[str, Any]:
+    def load_ingestion_config(self) -> Dict[str, Any]:
         """
         Load ingestion config from ingestion/config.yml.
         """
         project_root = Path(__file__).resolve().parents[2]
         config_path = project_root / "ingestion" / "config.yml"
-        return cls.load_yaml(config_path)
+        return self.load_yaml(config_path)
 
-    @classmethod
-    def get_connection(cls) -> "SnowflakeConnection":
+    def get_connection(self) -> SnowflakeConnection:
         """
-        Initialize and return a Snowflake connection using loader env variables.
+        Initialize and return a Snowflake connection using environment variables.
         """
         try:
-            logger.info(
-                "Creating Snowflake connection using loader environment variables"
-            )
-            cls._load_env_once()
-            import snowflake.connector
+            self.logger.info("Creating Snowflake connection")
 
-            conn = snowflake.connector.connect(
-                user=cls.get_env("LOADER_SNOWFLAKE_USER", required=True),
-                password=cls.get_env("LOADER_SNOWFLAKE_PASSWORD", required=True),
-                account=cls.get_env("LOADER_SNOWFLAKE_ACCOUNT", required=True),
-                warehouse=cls.get_env("LOADER_SNOWFLAKE_WAREHOUSE", required=True),
-                database=cls.get_env("LOADER_SNOWFLAKE_DATABASE", required=True),
-                role=cls.get_env("LOADER_SNOWFLAKE_ROLE", required=True),
+            return snowflake.connector.connect(
+                user=os.getenv("LOADER_SNOWFLAKE_USER"),
+                password=os.getenv("LOADER_SNOWFLAKE_PASSWORD"),
+                account=os.getenv("LOADER_SNOWFLAKE_ACCOUNT"),
+                warehouse=os.getenv("LOADER_SNOWFLAKE_WAREHOUSE"),
+                database=os.getenv("LOADER_SNOWFLAKE_DATABASE"),
+                role=os.getenv("LOADER_SNOWFLAKE_ROLE"),
             )
-
-            logger.info("Snowflake connection established successfully")
-            return conn
 
         except Exception as error:
-            logger.exception("Snowflake connection creation failed")
+            self.logger.exception("Snowflake connection failed")
             raise SnowflakeConfigError(error) from error

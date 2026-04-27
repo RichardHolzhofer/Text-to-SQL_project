@@ -1,6 +1,5 @@
 from src.exceptions.exception import EmbeddingCreationError
-from ingestion.utils import get_connection
-from embeddings.logger import logger
+from embeddings.config import config, logger
 
 
 def create_embeddings(
@@ -34,10 +33,10 @@ def create_embeddings(
             f"{target_schema}.{target_table}"
         )
 
-        conn = get_connection()
+        conn = config.get_connection()
         cursor = conn.cursor()
 
-        # Create the side table once; subsequent runs reuse the same structure.
+        # Create the side table
         cursor.execute(
             f"""
             CREATE TABLE IF NOT EXISTS {target_schema}.{target_table} (
@@ -47,7 +46,7 @@ def create_embeddings(
             """
         )
 
-        # Full refresh: clear old vectors before recomputing them from the mart.
+        # Clear old vectors before recomputing them from the mart.
         cursor.execute(f"TRUNCATE TABLE {target_schema}.{target_table}")
 
         cursor.execute(
@@ -69,7 +68,6 @@ def create_embeddings(
         raise EmbeddingCreationError(e)
 
     finally:
-        # Always close Snowflake resources, even if the SQL fails midway.
         if cursor is not None:
             cursor.close()
         if conn is not None:
