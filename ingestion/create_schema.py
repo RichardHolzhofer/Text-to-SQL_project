@@ -22,7 +22,7 @@ def insert_schema(raw_schema_name: str) -> None:
         raw_schema_name = raw_schema_name.upper()
 
         # Get connection
-        conn = config.get_connection()
+        conn = config.get_connection(write_access=True)
         cursor = conn.cursor()
 
         # Create the schema if it doesn't already exist

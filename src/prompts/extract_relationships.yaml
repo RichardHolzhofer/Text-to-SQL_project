@@ -18,6 +18,6 @@ messages:
     content: |
       Extract explicit foreign key relationships from the dbt schema YAML and table summaries below.
 
-      ```json
+      <relationship_context>
       {{ relationship_context }}
-      ```
+      </relationship_context>

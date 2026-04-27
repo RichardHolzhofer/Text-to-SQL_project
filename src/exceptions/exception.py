@@ -66,3 +66,7 @@ class NodeException(PipelineException):
 
 class SchemaBuildError(NodeException):
     """Raised when the unified schema build process fails."""
+
+
+class SQLGenerationError(NodeException):
+    """Raised when the SQL generation process fails."""

@@ -29,6 +29,6 @@ messages:
     content: |
       Extract one CanonicalTable object from this dbt model.
 
-      ```yaml
+      <model_yaml>
       {{ model_yaml }}
-      ```
+      </model_yaml>

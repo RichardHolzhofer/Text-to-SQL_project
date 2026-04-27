@@ -1,26 +1,35 @@
 import json
 from langchain.chat_models import init_chat_model
-from dotenv import load_dotenv
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 
-from src.states.state import Table, RelationshipDigest, Schema
+from src.states.state import Table, RelationshipDigest, Schema, SQLGenerator
 from src.utils.utils import load_prompt, load_yaml, dump_yaml
 from src.logger.logger import logger
-from src.exceptions.exception import SchemaBuildError, NodeException
-
-load_dotenv()
+from src.config.config import Config
+from src.exceptions.exception import SchemaBuildError, NodeException, SQLGenerationError
+from src.states.state import TextToSQLState
 
 
 class TextToSQLNodes:
-    def __init__(self):
+    def __init__(self, config: Config):
+        """
+        Initialize the node handler with shared configuration.
+
+        Args:
+            config (Config): The centralized configuration object.
+        """
         try:
+            self.config = config
             self.llm = init_chat_model("groq:openai/gpt-oss-120b")
-            logger.info("TextToSQLNodes initialized with LLM.")
+            self.max_retry = 3
+            logger.info("TextToSQLNodes initialized with LLM and Config.")
         except Exception as e:
             logger.exception("Failed to initialize TextToSQLNodes.")
             raise NodeException(e)
 
     def build_schema(
         self,
+        state: TextToSQLState,
         mart_schema_path="ecommerce_analytics/models/dbt_mrt/_dbt_mrt_schema.yml",
         enhancement_schema_path="embeddings/_embeddings_schema.yml",
     ):
@@ -59,7 +68,7 @@ class TextToSQLNodes:
 
                 # Load the prompt for table extraction
                 messages = load_prompt(
-                    "src/prompts/extract_canonical_table.yaml",
+                    "src/prompts/extract_table.yaml",
                     {"model_yaml": model_yaml_str},
                 )
 
@@ -93,8 +102,66 @@ class TextToSQLNodes:
             )
 
             logger.info("Unified schema build complete.")
-            return final_schema
+            return {"schema": final_schema}
 
         except Exception as e:
             logger.exception("Failed to build unified schema.")
             raise SchemaBuildError(e)
+
+    def generate_sql(self, state: TextToSQLState):
+        try:
+            logger.info(
+                f"Generating SQL query for question: '{state.question}' (Iteration: {state.iteration_count})"
+            )
+
+            # Bind the LLM to our SQLGenerator schema
+            sql_extractor = self.llm.with_structured_output(SQLGenerator)
+
+            # Serialize the schema so the LLM can read it
+            schema_json = json.dumps(state.schema.model_dump(), indent=2)
+
+            # Load the prompt with dynamic context
+            base_messages = load_prompt(
+                "src/prompts/generate_sql.yaml",
+                {"schema_context": schema_json, "question": state.question},
+            )
+
+            # Convert loaded prompt into LangChain message objects
+            langchain_messages = []
+            for role, content in base_messages:
+                if role == "system":
+                    langchain_messages.append(SystemMessage(content=content))
+                else:
+                    langchain_messages.append(HumanMessage(content=content))
+
+            # Append real conversational history (if any)
+            if state.chat_history:
+                langchain_messages.extend(state.chat_history)
+
+            # Ephemeral Error Injection (Only for backend retries)
+            if (
+                state.is_valid_query is False
+                and state.generated_sql
+                and state.error_message
+            ):
+                logger.info("Injecting previous error into prompt for correction.")
+                langchain_messages.append(
+                    AIMessage(content=state.generated_sql.sql_query)
+                )
+                langchain_messages.append(
+                    HumanMessage(content=f"Execution Failed: {state.error_message}")
+                )
+
+            # Execute
+            generated = sql_extractor.invoke(langchain_messages)
+
+            logger.info("SQL generation successful.")
+            logger.info(
+                f"Thought Process snippet: {generated.thought_process[:100]}..."
+            )
+
+            return {"generated_sql": generated}
+
+        except Exception as e:
+            logger.exception("Failed to create SQL query.")
+            raise SQLGenerationError(e)
