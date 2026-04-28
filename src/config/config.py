@@ -25,7 +25,10 @@ class Config:
         self.sf_account = os.getenv("LOADER_SNOWFLAKE_ACCOUNT")
         self.sf_database = os.getenv("LOADER_SNOWFLAKE_DATABASE")
         self.sf_warehouse = os.getenv("LOADER_SNOWFLAKE_WAREHOUSE")
-        self.sf_role = os.getenv("LOADER_SNOWFLAKE_ROLE")
+        self.sf_loader_role = os.getenv("LOADER_SNOWFLAKE_ROLE")
+        self.sf_reader_role = os.getenv("READER_SNOWFLAKE_ROLE")
+        self.sf_loader_schema = os.getenv("LOADER_SNOWFLAKE_SCHEMA")
+        self.sf_reader_schema = os.getenv("READER_SNOWFLAKE_SCHEMA")
 
         # Identity Settings (Loader vs Reader)
         self.sf_loader_user = os.getenv("LOADER_SNOWFLAKE_USER")
@@ -86,6 +89,8 @@ class Config:
 
             user = self.sf_loader_user if write_access else self.sf_reader_user
             password = self.sf_loader_pass if write_access else self.sf_reader_pass
+            role = self.sf_loader_role if write_access else self.sf_reader_role
+            schema = self.sf_loader_schema if write_access else self.sf_reader_schema
 
             return snowflake.connector.connect(
                 user=user,
@@ -93,7 +98,8 @@ class Config:
                 account=self.sf_account,
                 warehouse=self.sf_warehouse,
                 database=self.sf_database,
-                role=self.sf_role,
+                role=role,
+                schema=schema,
             )
 
         except Exception as error:

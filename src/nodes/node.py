@@ -27,6 +27,18 @@ class TextToSQLNodes:
             logger.exception("Failed to initialize TextToSQLNodes.")
             raise NodeException(e)
 
+    def _convert_to_messages(self, base_messages: list):
+        """Helper to convert tuple-based prompts into LangChain Message objects."""
+        langchain_messages = []
+        for role, content in base_messages:
+            if role == "system":
+                langchain_messages.append(SystemMessage(content=content))
+            elif role == "user":
+                langchain_messages.append(HumanMessage(content=content))
+            elif role == "assistant":
+                langchain_messages.append(AIMessage(content=content))
+        return langchain_messages
+
     def build_schema(
         self,
         state: TextToSQLState,
@@ -67,12 +79,17 @@ class TextToSQLNodes:
                 model_yaml_str = dump_yaml({"model": model})
 
                 # Load the prompt for table extraction
-                messages = load_prompt(
+                extract_table_prompt = load_prompt(
                     "src/prompts/extract_table.yaml",
                     {"model_yaml": model_yaml_str},
                 )
 
-                table_schema = self.table_extractor.invoke(messages)
+                extract_table_prompt_messages = self._convert_to_messages(
+                    extract_table_prompt
+                )
+                table_schema = self.table_extractor.invoke(
+                    extract_table_prompt_messages
+                )
                 db_tables.append(table_schema)
 
             logger.info(f"Successfully extracted {len(db_tables)} table definitions.")
@@ -84,12 +101,17 @@ class TextToSQLNodes:
                 "tables": [table.model_dump() for table in db_tables],
             }
 
-            rel_messages = load_prompt(
+            extract_relationships_prompt = load_prompt(
                 "src/prompts/extract_relationships.yaml",
                 {"relationship_context": json.dumps(relationship_context, indent=2)},
             )
 
-            relationship_digest = self.relationship_extractor.invoke(rel_messages)
+            extract_relationships_prompt_messages = self._convert_to_messages(
+                extract_relationships_prompt
+            )
+            relationship_digest = self.relationship_extractor.invoke(
+                extract_relationships_prompt_messages
+            )
 
             logger.info(
                 f"Extracted {len(relationship_digest.relationships)} foreign key relationships."
@@ -121,39 +143,22 @@ class TextToSQLNodes:
             schema_json = json.dumps(state.schema.model_dump(), indent=2)
 
             # Load the prompt with dynamic context
-            base_messages = load_prompt(
+            generate_sql_prompt = load_prompt(
                 "src/prompts/generate_sql.yaml",
                 {"schema_context": schema_json, "question": state.question},
             )
 
             # Convert loaded prompt into LangChain message objects
-            langchain_messages = []
-            for role, content in base_messages:
-                if role == "system":
-                    langchain_messages.append(SystemMessage(content=content))
-                else:
-                    langchain_messages.append(HumanMessage(content=content))
+            generate_sql_prompt_messages = self._convert_to_messages(
+                generate_sql_prompt
+            )
 
             # Append real conversational history (if any)
             if state.chat_history:
-                langchain_messages.extend(state.chat_history)
-
-            # Ephemeral Error Injection (Only for backend retries)
-            if (
-                state.is_valid_query is False
-                and state.generated_sql
-                and state.error_message
-            ):
-                logger.info("Injecting previous error into prompt for correction.")
-                langchain_messages.append(
-                    AIMessage(content=state.generated_sql.sql_query)
-                )
-                langchain_messages.append(
-                    HumanMessage(content=f"Execution Failed: {state.error_message}")
-                )
+                generate_sql_prompt_messages.extend(state.chat_history)
 
             # Execute
-            generated = sql_extractor.invoke(langchain_messages)
+            generated = sql_extractor.invoke(generate_sql_prompt_messages)
 
             logger.info("SQL generation successful.")
             logger.info(
@@ -165,3 +170,48 @@ class TextToSQLNodes:
         except Exception as e:
             logger.exception("Failed to create SQL query.")
             raise SQLGenerationError(e)
+
+    def validate_sql(self, state: TextToSQLState):
+        """
+        Validates the generated SQL using Snowflake's EXPLAIN command.
+        This checks for syntax and object existence without executing the query.
+        """
+        try:
+            if not state.generated_sql:
+                raise ValueError("No SQL generated to validate.")
+
+            sql = state.generated_sql.sql_query
+
+            # If the model explicitly said it can't answer, don't run EXPLAIN and mark as invalid
+            if sql is None:
+                logger.info(
+                    "No SQL generated (unsupported question). Skipping EXPLAIN validation."
+                )
+                return {
+                    "is_valid_query": False,
+                    "error_message": None,  # No Snowflake error, just unsupported
+                }
+
+            logger.info(
+                f"Validating SQL via EXPLAIN (Iteration: {state.iteration_count + 1})"
+            )
+
+            # Execute EXPLAIN in Snowflake
+            with self.config.get_connection(write_access=False) as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(f"EXPLAIN {sql}")
+
+            logger.info("SQL validation successful.")
+            return {
+                "is_valid_query": True,
+                "error_message": None,
+            }
+
+        except Exception as e:
+            error_str = str(e)
+            logger.warning(f"SQL validation failed: {error_str}")
+            return {
+                "is_valid_query": False,
+                "error_message": error_str,
+                "iteration_count": state.iteration_count + 1,
+            }
