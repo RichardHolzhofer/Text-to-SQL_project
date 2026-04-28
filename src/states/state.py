@@ -95,8 +95,13 @@ class SQLGenerator(BaseModel):
     thought_process: str = Field(
         description="The 'Chain of Thought' reasoning before writing the SQL query."
     )
-    sql_query: str = Field(
-        description="The actual Snowflake SQL query produced by the generator."
+    sql_query: Optional[str] = Field(
+        default=None,
+        description="The actual Snowflake SQL query. Set to null if the question cannot be answered with the provided schema.",
+    )
+    unsupported_explanation: Optional[str] = Field(
+        default=None,
+        description="A polite explanation for the user if the question cannot be answered (e.g., missing tables or columns).",
     )
 
 
