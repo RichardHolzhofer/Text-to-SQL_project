@@ -2,7 +2,7 @@ import json
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 
-from src.states.state import Table, RelationshipDigest, Schema, SQLGenerator
+from src.states.state import Table, RelationshipDigest, Schema, Router, SQLGenerator
 from src.utils.utils import load_prompt, load_yaml, dump_yaml
 from src.logger.logger import logger
 from src.config.config import Config
@@ -97,7 +97,6 @@ class TextToSQLNodes:
             # Extract relationships using the unified context
             logger.info("Starting relationship extraction across all tables...")
             relationship_context = {
-                "source_yaml": mart_schema_yaml,
                 "tables": [table.model_dump() for table in db_tables],
             }
 
@@ -129,6 +128,31 @@ class TextToSQLNodes:
         except Exception as e:
             logger.exception("Failed to build unified schema.")
             raise SchemaBuildError(e)
+
+    def route_format(self, state: TextToSQLState):
+        """
+        Uses an LLM to determine if the user wants tabular or natural language format.
+        """
+        try:
+            logger.info("Evaluating intent for display format...")
+
+            router_llm = self.llm.with_structured_output(Router)
+
+            intent_prompt = load_prompt(
+                "src/prompts/evaluate_intent.yaml",
+                {"question": state.question},
+            )
+            intent_prompt_messages = self._convert_to_messages(intent_prompt)
+
+            # Simple string output
+            response = router_llm.invoke(intent_prompt_messages)
+
+            return {"intent": response.route}
+
+        except Exception:
+            logger.exception("Failed to route format.")
+            # We still need a default fallback in case of API/Network errors
+            return {"intent": "nl"}
 
     def generate_sql(self, state: TextToSQLState):
         try:
@@ -215,3 +239,79 @@ class TextToSQLNodes:
                 "error_message": error_str,
                 "iteration_count": state.iteration_count + 1,
             }
+
+    def execute_sql(self, state: TextToSQLState):
+        """
+        Executes the validated SQL query against Snowflake.
+        Fetches the results and stores them in the state.
+        """
+        try:
+            if (
+                not state.is_valid_query
+                or not state.generated_sql
+                or not state.generated_sql.sql_query
+            ):
+                logger.info(
+                    "Skipping execution: query is either invalid or unsupported."
+                )
+                return {"query_results": None}
+
+            sql = state.generated_sql.sql_query
+            logger.info("Executing SQL query in Snowflake...")
+
+            results = []
+            with self.config.get_connection(write_access=False) as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(sql)
+                    if cursor.description:
+                        columns = [col[0] for col in cursor.description]
+                        rows = cursor.fetchall()
+                        for row in rows:
+                            results.append(dict(zip(columns, row)))
+
+            logger.info(f"Execution successful. Fetched {len(results)} rows.")
+            return {"query_results": results}
+
+        except Exception as e:
+            logger.exception("Failed to execute SQL query.")
+            raise NodeException(f"Execution failed: {e}")
+
+    def generate_tabular_answer(self, state: TextToSQLState):
+        """
+        Simply passes the query results to the tabular_answer state field.
+        """
+        logger.info("Generating tabular answer...")
+        return {"tabular_answer": state.query_results}
+
+    def generate_nl_answer(self, state: TextToSQLState):
+        """
+        Uses an LLM to generate a natural language summary of the query results.
+        """
+        try:
+            logger.info("Generating natural language answer...")
+
+            # Be mindful of result size. If it's too large, we might need to truncate.
+            results_str = json.dumps(state.query_results, indent=2, default=str)
+            if len(results_str) > 50000:
+                results_str = results_str[:50000] + "\n... [TRUNCATED]"
+
+            generate_nl_prompt = load_prompt(
+                "src/prompts/generate_nl_answer.yaml",
+                {
+                    "question": state.question,
+                    "sql_query_results": results_str,
+                },
+            )
+            messages = self._convert_to_messages(generate_nl_prompt)
+
+            if state.chat_history:
+                messages.extend(state.chat_history)
+
+            response = self.llm.invoke(messages)
+            answer = response.content.strip()
+
+            return {"answer": answer}
+
+        except Exception as e:
+            logger.exception("Failed to generate natural language answer.")
+            raise NodeException(f"Failed to generate NL answer: {e}")

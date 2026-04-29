@@ -88,6 +88,16 @@ class RelationshipDigest(BaseModel):
     )
 
 
+### State for Router
+
+
+class Router(BaseModel):
+    route: Literal["nl", "tab"] = Field(
+        default="nl",
+        description="Determines the desired output format based on the user's question. Output 'tab' if the user asks for a list, table, detailed records, or multiple results (e.g., 'show me the top 5 customers'). Output 'nl' if the user asks a question expecting a direct answer, a count, an average, or a summary (e.g., 'who is the best customer?', 'how many orders did we have?').",
+    )
+
+
 ### State for SQL generator
 
 
@@ -117,6 +127,9 @@ class TextToSQLState(BaseModel):
     # Schema extraction
     schema: Optional[Schema] = None
 
+    # Intent node
+    intent: Optional[Literal["nl", "tab"]] = None
+
     # SQL Generation State
     generated_sql: Optional[SQLGenerator] = None
 
@@ -132,6 +145,18 @@ class TextToSQLState(BaseModel):
         default=0, description="Counter for error-fixing loops."
     )
 
+    # SQL Executer
+    query_results: Optional[List[dict]] = Field(
+        default=None, description="The results from executing the SQL query."
+    )
+
+    # NL answer
     answer: Optional[str] = Field(
         default=None, description="Final natural language answer."
+    )
+
+    # Tabular answer
+    tabular_answer: Optional[List[dict]] = Field(
+        default=None,
+        description="The results stored as a list of dictionaries if tabular format is requested.",
     )
