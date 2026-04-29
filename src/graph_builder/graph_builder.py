@@ -20,15 +20,37 @@ class TextToSQLGraph:
 
         # Nodes
         workflow.add_node("schema_builder_node", self.nodes.build_schema)
+        workflow.add_node("router_query_node", self.nodes.route_format)
         workflow.add_node("query_generator_node", self.nodes.generate_sql)
         workflow.add_node("validator_node", self.nodes.validate_sql)
+        workflow.add_node("query_executer_node", self.nodes.execute_sql)
+        workflow.add_node("generate_tabular_answer", self.nodes.generate_tabular_answer)
+        workflow.add_node("generate_nl_answer", self.nodes.generate_nl_answer)
 
         # Edges
         workflow.set_entry_point("schema_builder_node")
-        workflow.add_edge("schema_builder_node", "query_generator_node")
+        workflow.add_edge("schema_builder_node", "router_query_node")
+        workflow.add_edge("router_query_node", "query_generator_node")
         workflow.add_edge("query_generator_node", "validator_node")
+        workflow.add_edge("validator_node", "query_executer_node")
 
-        workflow.add_edge("validator_node", END)
+        # Routing to display format
+        def format_router(state: TextToSQLState):
+            if state.intent == "tab":
+                return "tabular"
+            return "nl"
+
+        workflow.add_conditional_edges(
+            "query_executer_node",
+            format_router,
+            {
+                "tabular": "generate_tabular_answer",
+                "nl": "generate_nl_answer",
+            },
+        )
+
+        workflow.add_edge("generate_tabular_answer", END)
+        workflow.add_edge("generate_nl_answer", END)
 
         """
         # Routing logic
@@ -68,7 +90,8 @@ if __name__ == "__main__":
 
     # Invoke the graph
     result = compiled_graph.invoke(
-        {"question": "How many cats does each seller have?"}, config=config
+        {"question": "Give me the top 3 sellers by the number of products they sold"},
+        config=config,
     )
 
     # Save the full state to a JSON file for inspection
