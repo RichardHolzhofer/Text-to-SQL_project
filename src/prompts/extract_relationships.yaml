@@ -6,8 +6,6 @@ messages:
     content: |
       You are extracting explicit foreign key relationships from a dbt schema YAML file and table summaries.
 
-      Return exactly one CanonicalRelationshipDigest object.
-
       Rules:
       - Include only relationships explicitly supported by dbt relationship tests.
       - Do not invent relationships.
