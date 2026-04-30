@@ -5,8 +5,13 @@ import yaml
 from dotenv import load_dotenv
 import snowflake.connector
 from snowflake.connector.connection import SnowflakeConnection
+from supabase import create_client, Client
 
-from src.exceptions.exception import ConfigError, SnowflakeConfigError
+from src.exceptions.exception import (
+    ConfigError,
+    SnowflakeConfigError,
+    SupabaseConnectionError,
+)
 from src.logger.logger import get_logger
 
 
@@ -21,7 +26,7 @@ class Config:
         load_dotenv()
         self.logger.info("Environment variables loaded from .env")
 
-        # Snowflake Connection Settings
+        # Snowflake connection settings
         self.sf_account = os.getenv("LOADER_SNOWFLAKE_ACCOUNT")
         self.sf_database = os.getenv("LOADER_SNOWFLAKE_DATABASE")
         self.sf_warehouse = os.getenv("LOADER_SNOWFLAKE_WAREHOUSE")
@@ -30,22 +35,44 @@ class Config:
         self.sf_loader_schema = os.getenv("LOADER_SNOWFLAKE_SCHEMA")
         self.sf_reader_schema = os.getenv("READER_SNOWFLAKE_SCHEMA")
 
-        # Identity Settings (Loader vs Reader)
+        # Identity settings (Loader vs Reader)
         self.sf_loader_user = os.getenv("LOADER_SNOWFLAKE_USER")
         self.sf_loader_pass = os.getenv("LOADER_SNOWFLAKE_PASSWORD")
 
         self.sf_reader_user = os.getenv("READER_SNOWFLAKE_USER")
         self.sf_reader_pass = os.getenv("READER_SNOWFLAKE_PASSWORD")
 
-        # Validation (Optional but recommended)
+        # Supabase settings for persistant memory handling
+        self.sb_project_name = os.getenv("SUPABASE_PROJECT_NAME")
+        self.sb_db_uri = os.getenv("SUPABASE_DB_URI")
+        self.sb_url = os.getenv("SUPABASE_URL")
+        self.sb_anon_key = os.getenv("SUPABASE_ANON_KEY")
+        self.sb_service_role_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+        self.sb_password = os.getenv("SUPABASE_PASSWORD")
+
+        # Validation (Optional)
         self._validate_config()
 
     def _validate_config(self):
         """Ensure critical environment variables are present."""
         required = [
             "LOADER_SNOWFLAKE_ACCOUNT",
+            "LOADER_SNOWFLAKE_DATABASE",
+            "LOADER_SNOWFLAKE_WAREHOUSE",
+            "LOADER_SNOWFLAKE_ROLE",
+            "READER_SNOWFLAKE_ROLE",
+            "LOADER_SNOWFLAKE_SCHEMA",
+            "READER_SNOWFLAKE_SCHEMA",
             "LOADER_SNOWFLAKE_USER",
+            "LOADER_SNOWFLAKE_PASSWORD",
             "READER_SNOWFLAKE_USER",
+            "READER_SNOWFLAKE_PASSWORD",
+            "SUPABASE_PROJECT_NAME",
+            "SUPABASE_DB_URI",
+            "SUPABASE_URL",
+            "SUPABASE_ANON_KEY",
+            "SUPABASE_SERVICE_ROLE_KEY",
+            "SUPABASE_PASSWORD",
         ]
         missing = [var for var in required if not os.getenv(var)]
         if missing:
@@ -75,7 +102,9 @@ class Config:
         config_path = project_root / "ingestion" / "config.yml"
         return self.load_yaml(config_path)
 
-    def get_connection(self, write_access: bool = False) -> SnowflakeConnection:
+    def get_snowflake_connection(
+        self, write_access: bool = False
+    ) -> SnowflakeConnection:
         """
         Initialize and return a Snowflake connection.
 
@@ -105,3 +134,29 @@ class Config:
         except Exception as error:
             self.logger.exception(f"Snowflake connection failed for {access_type} user")
             raise SnowflakeConfigError(error) from error
+
+    def get_supabase_connection(self, write_access: bool = False) -> Client:
+        """
+        Initialize and return a Supabase Client.
+
+        Args:
+            write_access (bool): If True, uses the SERVICE_ROLE_KEY (bypasses RLS, can manage schema).
+                                 If False (default), uses the ANON_KEY (subject to RLS).
+        """
+        try:
+            access_type = "SERVICE_ROLE (Admin)" if write_access else "ANON (User)"
+            self.logger.info(f"Creating Supabase client with {access_type} access")
+
+            key = self.sb_service_role_key if write_access else self.sb_anon_key
+
+            if not key:
+                raise ConfigError(
+                    f"Supabase {access_type} key is missing from configuration."
+                )
+            return create_client(self.sb_url, key)
+
+        except Exception as error:
+            self.logger.exception(
+                f"Supabase connection failed for {access_type} access"
+            )
+            raise SupabaseConnectionError(error) from error

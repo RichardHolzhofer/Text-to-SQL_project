@@ -239,7 +239,7 @@ class TextToSQLNodes:
             )
 
             # Execute EXPLAIN in Snowflake
-            with self.config.get_connection(write_access=False) as conn:
+            with self.config.get_snowflake_connection(write_access=False) as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(f"EXPLAIN {sql}")
 
@@ -278,7 +278,7 @@ class TextToSQLNodes:
             logger.info("Executing SQL query in Snowflake...")
 
             results = []
-            with self.config.get_connection(write_access=False) as conn:
+            with self.config.get_snowflake_connection(write_access=False) as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(sql)
                     if cursor.description:
