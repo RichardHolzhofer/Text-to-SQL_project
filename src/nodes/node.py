@@ -175,7 +175,7 @@ class TextToSQLNodes:
     def generate_sql(self, state: TextToSQLState):
         try:
             logger.info(
-                f"Generating SQL query for question: '{state.question}' (Iteration: {state.iteration_count} + 1)"
+                f"Generating SQL query for question: '{state.question}' (Iteration: {state.iteration_count + 1})"
             )
 
             # Bind the LLM to our SQLGenerator schema

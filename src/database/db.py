@@ -18,6 +18,7 @@ class SupabaseDB:
         self.config = config
         self.supabase_conn: Client = config.get_supabase_connection(write_access=admin)
         self.user_id: Optional[str] = None
+        self.user_email: Optional[str] = None
 
     def sign_in(self, email: str, password: str) -> Tuple[bool, str]:
         """Authenticates a user with email and password."""
@@ -27,6 +28,7 @@ class SupabaseDB:
             )
             if response.user:
                 self.user_id = response.user.id
+                self.user_email = response.user.email
                 return True, f"Successfully logged in as {response.user.email}!"
             return False, "Login failed: No user returned."
         except Exception as e:
@@ -58,6 +60,36 @@ class SupabaseDB:
             self.user_id = None
         except Exception:
             pass
+
+    def get_sessions(self) -> List[Dict[str, Any]]:
+        """Fetches all conversation sessions for the current user."""
+        if not self.user_id:
+            return []
+        try:
+            response = (
+                self.supabase_conn.table("sessions")
+                .select("*")
+                .eq("user_id", self.user_id)
+                .order("created_at", desc=True)
+                .execute()
+            )
+            return response.data
+        except Exception as e:
+            error = SupabaseQueryError(e)
+            self.config.logger.error(error)
+            return []
+
+    def create_session(self, thread_id: str, title: str = "New Conversation"):
+        """Creates a new session entry in the database."""
+        if not self.user_id:
+            return
+        try:
+            self.supabase_conn.table("sessions").upsert(
+                {"id": thread_id, "user_id": self.user_id, "title": title}
+            ).execute()
+        except Exception as e:
+            error = SupabaseQueryError(e)
+            self.config.logger.error(error)
 
     def load_chat_history(self, session_id: str) -> List[Dict[str, Any]]:
         """Loads the last 50 messages for a specific session and user."""
@@ -136,20 +168,64 @@ class SupabaseDB:
         tasks = [
             (session_table_creation, "sessions"),
             (messages_table_creation, "messages"),
+            # Enable RLS
+            ("ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;", "enable RLS sessions"),
+            ("ALTER TABLE messages ENABLE ROW LEVEL SECURITY;", "enable RLS messages"),
+            # Create Policies
+            (
+                'CREATE POLICY "Users can view their own sessions" ON sessions FOR SELECT USING (auth.uid() = user_id);',
+                "policy select sessions",
+            ),
+            (
+                'CREATE POLICY "Users can insert their own sessions" ON sessions FOR INSERT WITH CHECK (auth.uid() = user_id);',
+                "policy insert sessions",
+            ),
+            (
+                'CREATE POLICY "Users can update their own sessions" ON sessions FOR UPDATE USING (auth.uid() = user_id);',
+                "policy update sessions",
+            ),
+            (
+                'CREATE POLICY "Users can delete their own sessions" ON sessions FOR DELETE USING (auth.uid() = user_id);',
+                "policy delete sessions",
+            ),
+            (
+                'CREATE POLICY "Users can view their own messages" ON messages FOR SELECT USING (auth.uid() = user_id);',
+                "policy select messages",
+            ),
+            (
+                'CREATE POLICY "Users can insert their own messages" ON messages FOR INSERT WITH CHECK (auth.uid() = user_id);',
+                "policy insert messages",
+            ),
+            (
+                'CREATE POLICY "Users can delete their own messages" ON messages FOR DELETE USING (auth.uid() = user_id);',
+                "policy delete messages",
+            ),
         ]
 
         for query, name in tasks:
-            self._execute_query(query, f"Creating {name} table")
+            if name in ["sessions", "messages"]:
+                self._execute_query(query, f"Creating {name} table")
+            else:
+                self._execute_query(query, "Adding policies...")
 
     def drop_tables(self):
         """Drops the tables from Supabase using psycopg2."""
 
         messages_table_deletion = "DROP TABLE IF EXISTS messages;"
         sessions_table_deletion = "DROP TABLE IF EXISTS sessions;"
+        # LangGraph internal tables
+        checkpoint_writes_deletion = "DROP TABLE IF EXISTS checkpoint_writes;"
+        checkpoint_blobs_deletion = "DROP TABLE IF EXISTS checkpoint_blobs;"
+        checkpoint_migrations_deletion = "DROP TABLE IF EXISTS checkpoint_migrations;"
+        checkpoints_deletion = "DROP TABLE IF EXISTS checkpoints;"
 
         tasks = [
             (messages_table_deletion, "messages"),
             (sessions_table_deletion, "sessions"),
+            (checkpoint_writes_deletion, "checkpoint_writes"),
+            (checkpoint_blobs_deletion, "checkpoint_blobs"),
+            (checkpoint_migrations_deletion, "checkpoint_migrations"),
+            (checkpoints_deletion, "checkpoints"),
         ]
 
         for query, name in tasks:
