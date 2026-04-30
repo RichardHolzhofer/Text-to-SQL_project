@@ -50,6 +50,23 @@ class TextToSQLNodes:
         Schema for the LLM.
         """
         try:
+            # Reset intermediate state variables for each new turn
+            reset_state = {
+                "intent": None,
+                "generated_sql": None,
+                "is_valid_query": None,
+                "error_message": None,
+                "iteration_count": 0,
+                "query_results": None,
+                "answer": None,
+                "tabular_answer": None,
+            }
+
+            if state.schema is not None:
+                logger.info("Schema is already loaded in state. Skipping extraction.")
+                reset_state["schema"] = state.schema
+                return reset_state
+
             logger.info(
                 f"Building unified schema from {mart_schema_path} and {enhancement_schema_path}"
             )
@@ -123,7 +140,8 @@ class TextToSQLNodes:
             )
 
             logger.info("Unified schema build complete.")
-            return {"schema": final_schema}
+            reset_state["schema"] = final_schema
+            return reset_state
 
         except Exception as e:
             logger.exception("Failed to build unified schema.")
@@ -157,7 +175,7 @@ class TextToSQLNodes:
     def generate_sql(self, state: TextToSQLState):
         try:
             logger.info(
-                f"Generating SQL query for question: '{state.question}' (Iteration: {state.iteration_count})"
+                f"Generating SQL query for question: '{state.question}' (Iteration: {state.iteration_count} + 1)"
             )
 
             # Bind the LLM to our SQLGenerator schema
@@ -281,7 +299,12 @@ class TextToSQLNodes:
         Simply passes the query results to the tabular_answer state field.
         """
         logger.info("Generating tabular answer...")
-        return {"tabular_answer": state.query_results}
+        return {
+            "tabular_answer": state.query_results,
+            "chat_history": [
+                AIMessage(content="Here are the tabular results you requested.")
+            ],
+        }
 
     def generate_nl_answer(self, state: TextToSQLState):
         """
@@ -289,6 +312,14 @@ class TextToSQLNodes:
         """
         try:
             logger.info("Generating natural language answer...")
+
+            # If the query was unsupported, just return the explanation as the answer
+            if state.generated_sql and state.generated_sql.unsupported_explanation:
+                explanation = state.generated_sql.unsupported_explanation
+                return {
+                    "answer": explanation,
+                    "chat_history": [AIMessage(content=explanation)],
+                }
 
             # Be mindful of result size. If it's too large, we might need to truncate.
             results_str = json.dumps(state.query_results, indent=2, default=str)
@@ -310,7 +341,7 @@ class TextToSQLNodes:
             response = self.llm.invoke(messages)
             answer = response.content.strip()
 
-            return {"answer": answer}
+            return {"answer": answer, "chat_history": [AIMessage(content=answer)]}
 
         except Exception as e:
             logger.exception("Failed to generate natural language answer.")

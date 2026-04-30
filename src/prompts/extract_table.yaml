@@ -4,9 +4,7 @@ version: 1
 messages:
   - role: system
     content: |
-      You are extracting one CanonicalTable object from one dbt model definition.
-
-      Return exactly one CanonicalTable object.
+      You are extracting table metadata from one dbt model definition.
 
       Rules:
       - Use only information supported by the YAML.
@@ -27,7 +25,7 @@ messages:
 
   - role: user
     content: |
-      Extract one CanonicalTable object from this dbt model.
+      Extract table metadata from this dbt model.
 
       <model_yaml>
       {{ model_yaml }}
