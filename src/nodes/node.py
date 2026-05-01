@@ -1,9 +1,9 @@
 import json
-from langchain.chat_models import init_chat_model
-from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+from langchain_core.messages import AIMessage
 
 from src.states.state import Table, RelationshipDigest, Schema, Router, SQLGenerator
 from src.utils.utils import load_prompt, load_yaml, dump_yaml
+from src.utils.llm_utils import convert_to_messages
 from src.logger.logger import logger
 from src.config.config import Config
 from src.exceptions.exception import SchemaBuildError, NodeException, SQLGenerationError
@@ -20,24 +20,13 @@ class TextToSQLNodes:
         """
         try:
             self.config = config
-            self.llm = init_chat_model("groq:openai/gpt-oss-120b")
+            self.smart_llm = config.get_smart_llm()
+            self.fast_llm = config.get_fast_llm()
             self.max_retry = 3
-            logger.info("TextToSQLNodes initialized with LLM and Config.")
+            logger.info("TextToSQLNodes initialized using Config LLMs.")
         except Exception as e:
             logger.exception("Failed to initialize TextToSQLNodes.")
             raise NodeException(e)
-
-    def _convert_to_messages(self, base_messages: list):
-        """Helper to convert tuple-based prompts into LangChain Message objects."""
-        langchain_messages = []
-        for role, content in base_messages:
-            if role == "system":
-                langchain_messages.append(SystemMessage(content=content))
-            elif role == "user":
-                langchain_messages.append(HumanMessage(content=content))
-            elif role == "assistant":
-                langchain_messages.append(AIMessage(content=content))
-        return langchain_messages
 
     def build_schema(
         self,
@@ -71,8 +60,8 @@ class TextToSQLNodes:
                 f"Building unified schema from {mart_schema_path} and {enhancement_schema_path}"
             )
 
-            self.table_extractor = self.llm.with_structured_output(Table)
-            self.relationship_extractor = self.llm.with_structured_output(
+            self.table_extractor = self.smart_llm.with_structured_output(Table)
+            self.relationship_extractor = self.smart_llm.with_structured_output(
                 RelationshipDigest
             )
 
@@ -101,7 +90,7 @@ class TextToSQLNodes:
                     {"model_yaml": model_yaml_str},
                 )
 
-                extract_table_prompt_messages = self._convert_to_messages(
+                extract_table_prompt_messages = convert_to_messages(
                     extract_table_prompt
                 )
                 table_schema = self.table_extractor.invoke(
@@ -122,7 +111,7 @@ class TextToSQLNodes:
                 {"relationship_context": json.dumps(relationship_context, indent=2)},
             )
 
-            extract_relationships_prompt_messages = self._convert_to_messages(
+            extract_relationships_prompt_messages = convert_to_messages(
                 extract_relationships_prompt
             )
             relationship_digest = self.relationship_extractor.invoke(
@@ -154,13 +143,13 @@ class TextToSQLNodes:
         try:
             logger.info("Evaluating intent for display format...")
 
-            router_llm = self.llm.with_structured_output(Router)
+            router_llm = self.fast_llm.with_structured_output(Router)
 
             intent_prompt = load_prompt(
                 "src/prompts/evaluate_intent.yaml",
                 {"question": state.question},
             )
-            intent_prompt_messages = self._convert_to_messages(intent_prompt)
+            intent_prompt_messages = convert_to_messages(intent_prompt)
 
             # Simple string output
             response = router_llm.invoke(intent_prompt_messages)
@@ -179,7 +168,7 @@ class TextToSQLNodes:
             )
 
             # Bind the LLM to our SQLGenerator schema
-            sql_extractor = self.llm.with_structured_output(SQLGenerator)
+            sql_extractor = self.smart_llm.with_structured_output(SQLGenerator)
 
             # Serialize the schema so the LLM can read it
             schema_json = json.dumps(state.schema.model_dump(), indent=2)
@@ -191,9 +180,7 @@ class TextToSQLNodes:
             )
 
             # Convert loaded prompt into LangChain message objects
-            generate_sql_prompt_messages = self._convert_to_messages(
-                generate_sql_prompt
-            )
+            generate_sql_prompt_messages = convert_to_messages(generate_sql_prompt)
 
             # Append real conversational history (if any)
             if state.chat_history:
@@ -333,12 +320,12 @@ class TextToSQLNodes:
                     "sql_query_results": results_str,
                 },
             )
-            messages = self._convert_to_messages(generate_nl_prompt)
+            messages = convert_to_messages(generate_nl_prompt)
 
             if state.chat_history:
                 messages.extend(state.chat_history)
 
-            response = self.llm.invoke(messages)
+            response = self.fast_llm.invoke(messages)
             answer = response.content.strip()
 
             return {"answer": answer, "chat_history": [AIMessage(content=answer)]}

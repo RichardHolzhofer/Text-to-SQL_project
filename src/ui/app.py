@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from langfuse import get_client, propagate_attributes
 from langfuse.langchain import CallbackHandler
 from langchain_core.messages import HumanMessage
+from src.utils.llm_utils import generate_conversation_title
 
 langfuse = get_client()
 
@@ -48,11 +49,11 @@ if "messages" not in st.session_state:
 @st.cache_resource
 def get_graph():
     builder = TextToSQLGraph()
-    return builder.build_graph()
+    return builder.build_graph(), builder.nodes
 
 
 try:
-    graph = get_graph()
+    graph, nodes = get_graph()
 except Exception as e:
     st.error(f"Failed to initialize the graph: {str(e)}")
     st.stop()
@@ -143,9 +144,11 @@ with st.sidebar:
     if threads:
         for t in threads:
             title = t.get("title") or t["thread_id"]
-            # Use a slightly different label or style for the active thread
+            # Highlight the active thread by wrapping it in brackets or just bolding
             button_label = (
-                f"💬 {title}" if t["thread_id"] == st.session_state.thread_id else title
+                f"💬 **{title}**"
+                if t["thread_id"] == st.session_state.thread_id
+                else title
             )
 
             col1, col2 = st.columns([0.8, 0.2])
@@ -228,11 +231,11 @@ if prompt:
     # Invoke graph
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
-            config = {"configurable": {"thread_id": st.session_state.thread_id}}
+            graph_config = {"configurable": {"thread_id": st.session_state.thread_id}}
 
             try:
                 langfuse_handler = CallbackHandler()
-                config["callbacks"] = [langfuse_handler]
+                graph_config["callbacks"] = [langfuse_handler]
 
                 # Graph state updates inside the propagate_attributes context
                 with propagate_attributes(
@@ -245,7 +248,7 @@ if prompt:
                             "question": prompt,
                             "chat_history": [HumanMessage(content=prompt)],
                         },
-                        config=config,
+                        config=graph_config,
                     )
 
                 # Determine response type and display
@@ -300,6 +303,13 @@ if prompt:
                     st.error(
                         "An unexpected error occurred. No answer or table was generated."
                     )
+
+                # --- Auto-generate title after the first exchange ---
+                if len(st.session_state.messages) == 2:
+                    with st.spinner("Generating conversation title..."):
+                        new_title = generate_conversation_title(config, prompt)
+                        db.create_thread(st.session_state.thread_id, title=new_title)
+                    st.rerun()
 
             except Exception as e:
                 error_msg = f"Error invoking graph: {str(e)}"
