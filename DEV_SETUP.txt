@@ -27,3 +27,10 @@ Get-Content .env | ForEach-Object {
 After running the command, you can verify it worked by typing:
 echo $LOADER_SNOWFLAKE_ACCOUNT  # Bash
 $env:LOADER_SNOWFLAKE_ACCOUNT    # PowerShell
+
+---
+
+### RUNNING THE APP
+From the root directory, use the following command:
+
+uv run streamlit run src/ui/app.py

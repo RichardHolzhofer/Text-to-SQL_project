@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import snowflake.connector
 from snowflake.connector.connection import SnowflakeConnection
 from supabase import create_client, Client
+from langchain.chat_models import init_chat_model
 
 from src.exceptions.exception import (
     ConfigError,
@@ -50,6 +51,10 @@ class Config:
         self.sb_service_role_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
         self.sb_password = os.getenv("SUPABASE_PASSWORD")
 
+        # LLM Model settings
+        self.smart_model = os.getenv("SMART_LLM_MODEL")
+        self.fast_model = os.getenv("FAST_LLM_MODEL")
+
         # Validation (Optional)
         self._validate_config()
 
@@ -73,6 +78,8 @@ class Config:
             "SUPABASE_ANON_KEY",
             "SUPABASE_SERVICE_ROLE_KEY",
             "SUPABASE_PASSWORD",
+            "SMART_LLM_MODEL",
+            "FAST_LLM_MODEL",
         ]
         missing = [var for var in required if not os.getenv(var)]
         if missing:
@@ -160,3 +167,17 @@ class Config:
                 f"Supabase connection failed for {access_type} access"
             )
             raise SupabaseConnectionError(error) from error
+
+    def get_smart_llm(self):
+        """Returns a cached instance of the smart LLM."""
+        if not hasattr(self, "_smart_llm") or self._smart_llm is None:
+            self.logger.info(f"Initializing Smart LLM: {self.smart_model}")
+            self._smart_llm = init_chat_model(self.smart_model)
+        return self._smart_llm
+
+    def get_fast_llm(self):
+        """Returns a cached instance of the fast LLM."""
+        if not hasattr(self, "_fast_llm") or self._fast_llm is None:
+            self.logger.info(f"Initializing Fast LLM: {self.fast_model}")
+            self._fast_llm = init_chat_model(self.fast_model)
+        return self._fast_llm
