@@ -61,13 +61,13 @@ class SupabaseDB:
         except Exception:
             pass
 
-    def get_sessions(self) -> List[Dict[str, Any]]:
-        """Fetches all conversation sessions for the current user."""
+    def get_threads(self) -> List[Dict[str, Any]]:
+        """Fetches all conversation threads for the current user."""
         if not self.user_id:
             return []
         try:
             response = (
-                self.supabase_conn.table("sessions")
+                self.supabase_conn.table("threads")
                 .select("*")
                 .eq("user_id", self.user_id)
                 .order("created_at", desc=True)
@@ -79,20 +79,20 @@ class SupabaseDB:
             self.config.logger.error(error)
             return []
 
-    def create_session(self, thread_id: str, title: str = "New Conversation"):
-        """Creates a new session entry in the database."""
+    def create_thread(self, thread_id: str, title: str = "New Conversation"):
+        """Creates a new thread entry in the database."""
         if not self.user_id:
             return
         try:
-            self.supabase_conn.table("sessions").upsert(
-                {"id": thread_id, "user_id": self.user_id, "title": title}
+            self.supabase_conn.table("threads").upsert(
+                {"thread_id": thread_id, "user_id": self.user_id, "title": title}
             ).execute()
         except Exception as e:
             error = SupabaseQueryError(e)
             self.config.logger.error(error)
 
-    def load_chat_history(self, session_id: str) -> List[Dict[str, Any]]:
-        """Loads the last 50 messages for a specific session and user."""
+    def load_chat_history(self, thread_id: str) -> List[Dict[str, Any]]:
+        """Loads the last 50 messages for a specific thread and user."""
         if not self.user_id:
             return []
 
@@ -100,7 +100,7 @@ class SupabaseDB:
             response = (
                 self.supabase_conn.table("messages")
                 .select("*")
-                .eq("session_id", session_id)
+                .eq("thread_id", thread_id)
                 .eq("user_id", self.user_id)
                 .order("created_at", desc=False)
                 .limit(50)
@@ -121,7 +121,7 @@ class SupabaseDB:
             return []
 
     def save_message(
-        self, session_id: str, role: str, content: Any, msg_type: str = "text"
+        self, thread_id: str, role: str, content: Any, msg_type: str = "text"
     ) -> bool:
         """Saves a single chat message to the database."""
         if not self.user_id:
@@ -130,7 +130,7 @@ class SupabaseDB:
         try:
             self.supabase_conn.table("messages").insert(
                 {
-                    "session_id": session_id,
+                    "thread_id": thread_id,
                     "user_id": self.user_id,
                     "role": role,
                     "type": msg_type,
@@ -143,12 +143,61 @@ class SupabaseDB:
             self.config.logger.error(error)
             return False
 
+    def delete_thread(self, thread_id: str) -> bool:
+        """
+        Deletes a specific thread, its messages, and its LangGraph checkpoints.
+        """
+        try:
+            # 1. Delete LangGraph checkpoints manually from Postgres
+            for table in ["checkpoints", "checkpoint_blobs", "checkpoint_writes"]:
+                query = f"DELETE FROM {table} WHERE thread_id = '{thread_id}';"
+                self._execute_query(
+                    query, f"Cleaning up {table} for thread {thread_id}"
+                )
+
+            # 2. Delete from threads table (cascades to messages)
+            self.supabase_conn.table("threads").delete().eq(
+                "thread_id", thread_id
+            ).execute()
+            return True
+        except Exception as e:
+            self.config.logger.error(f"Failed to delete thread {thread_id}: {e}")
+            return False
+
+    def delete_user(self, user_id: str) -> bool:
+        """
+        Deletes a user and ALL their associated data (history + checkpoints).
+        Requires 'admin=True' (service_role key).
+        """
+        try:
+            # 1. Get all thread_ids for this user to clean up LangGraph memory
+            # Note: We must do this before deleting the user/threads
+            threads = self.get_threads()
+            thread_ids = [t["thread_id"] for t in threads]
+
+            # 2. Delete LangGraph checkpoints manually
+            if thread_ids:
+                thread_ids_str = ", ".join([f"'{tid}'" for tid in thread_ids])
+                for table in ["checkpoints", "checkpoint_blobs", "checkpoint_writes"]:
+                    query = (
+                        f"DELETE FROM {table} WHERE thread_id IN ({thread_ids_str});"
+                    )
+                    self._execute_query(query, f"Cleaning up {table}")
+
+            # 3. Delete from Supabase Auth (This cascades to 'threads' and 'messages' tables in public schema)
+            # This requires service_role key
+            self.supabase_conn.auth.admin.delete_user(user_id)
+            return True
+        except Exception as e:
+            self.config.logger.error(f"Failed to delete user {user_id}: {e}")
+            return False
+
     def create_tables(self):
         """Creates the necessary tables in Supabase using psycopg2."""
 
-        session_table_creation = """
-        CREATE TABLE IF NOT EXISTS sessions (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        thread_table_creation = """
+        CREATE TABLE IF NOT EXISTS threads (
+        thread_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         user_id UUID NOT NULL REFERENCES auth.users(id),
         title TEXT,
         created_at TIMESTAMPTZ DEFAULT now()
@@ -157,7 +206,7 @@ class SupabaseDB:
         messages_table_creation = """
         CREATE TABLE IF NOT EXISTS messages (
         id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
-        session_id UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+        thread_id UUID NOT NULL REFERENCES threads(thread_id) ON DELETE CASCADE,
         user_id UUID NOT NULL REFERENCES auth.users(id),
         role TEXT NOT NULL,
         type TEXT NOT NULL DEFAULT 'text',
@@ -166,27 +215,27 @@ class SupabaseDB:
         );
         """
         tasks = [
-            (session_table_creation, "sessions"),
+            (thread_table_creation, "threads"),
             (messages_table_creation, "messages"),
             # Enable RLS
-            ("ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;", "enable RLS sessions"),
+            ("ALTER TABLE threads ENABLE ROW LEVEL SECURITY;", "enable RLS threads"),
             ("ALTER TABLE messages ENABLE ROW LEVEL SECURITY;", "enable RLS messages"),
             # Create Policies
             (
-                'CREATE POLICY "Users can view their own sessions" ON sessions FOR SELECT USING (auth.uid() = user_id);',
-                "policy select sessions",
+                'CREATE POLICY "Users can view their own threads" ON threads FOR SELECT USING (auth.uid() = user_id);',
+                "policy select threads",
             ),
             (
-                'CREATE POLICY "Users can insert their own sessions" ON sessions FOR INSERT WITH CHECK (auth.uid() = user_id);',
-                "policy insert sessions",
+                'CREATE POLICY "Users can insert their own threads" ON threads FOR INSERT WITH CHECK (auth.uid() = user_id);',
+                "policy insert threads",
             ),
             (
-                'CREATE POLICY "Users can update their own sessions" ON sessions FOR UPDATE USING (auth.uid() = user_id);',
-                "policy update sessions",
+                'CREATE POLICY "Users can update their own threads" ON threads FOR UPDATE USING (auth.uid() = user_id);',
+                "policy update threads",
             ),
             (
-                'CREATE POLICY "Users can delete their own sessions" ON sessions FOR DELETE USING (auth.uid() = user_id);',
-                "policy delete sessions",
+                'CREATE POLICY "Users can delete their own threads" ON threads FOR DELETE USING (auth.uid() = user_id);',
+                "policy delete threads",
             ),
             (
                 'CREATE POLICY "Users can view their own messages" ON messages FOR SELECT USING (auth.uid() = user_id);',
@@ -203,7 +252,7 @@ class SupabaseDB:
         ]
 
         for query, name in tasks:
-            if name in ["sessions", "messages"]:
+            if name in ["threads", "messages"]:
                 self._execute_query(query, f"Creating {name} table")
             else:
                 self._execute_query(query, "Adding policies...")
@@ -212,7 +261,7 @@ class SupabaseDB:
         """Drops the tables from Supabase using psycopg2."""
 
         messages_table_deletion = "DROP TABLE IF EXISTS messages;"
-        sessions_table_deletion = "DROP TABLE IF EXISTS sessions;"
+        threads_table_deletion = "DROP TABLE IF EXISTS threads;"
         # LangGraph internal tables
         checkpoint_writes_deletion = "DROP TABLE IF EXISTS checkpoint_writes;"
         checkpoint_blobs_deletion = "DROP TABLE IF EXISTS checkpoint_blobs;"
@@ -221,7 +270,7 @@ class SupabaseDB:
 
         tasks = [
             (messages_table_deletion, "messages"),
-            (sessions_table_deletion, "sessions"),
+            (threads_table_deletion, "threads"),
             (checkpoint_writes_deletion, "checkpoint_writes"),
             (checkpoint_blobs_deletion, "checkpoint_blobs"),
             (checkpoint_migrations_deletion, "checkpoint_migrations"),

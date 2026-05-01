@@ -85,12 +85,32 @@ with st.sidebar:
                     st.error(message)
     else:
         st.write(f"Logged in as: **{st.session_state.user_email}**")
-        if st.button("Logout"):
+        if st.button("Logout", use_container_width=True):
             db.sign_out()
             st.session_state.user_id = None
             st.session_state.user_email = None
             st.session_state.messages = []
             st.rerun()
+
+        with st.expander("Danger Zone"):
+            if st.button("Delete Account", type="primary", use_container_width=True):
+                if st.session_state.get("confirm_delete_account"):
+                    # Use an admin instance for deletion
+                    admin_db = SupabaseDB(config, admin=True)
+                    if admin_db.delete_user(st.session_state.user_id):
+                        st.success("Account deleted.")
+                        st.session_state.user_id = None
+                        st.session_state.user_email = None
+                        st.session_state.messages = []
+                        st.session_state.confirm_delete_account = False
+                        st.rerun()
+                    else:
+                        st.error("Failed to delete account.")
+                else:
+                    st.session_state.confirm_delete_account = True
+                    st.warning(
+                        "Are you sure? This will delete ALL your data. Click again to confirm."
+                    )
 
     st.markdown("---")
 
@@ -109,34 +129,47 @@ if (
     and not st.session_state.messages
     and not st.session_state.new_session_requested
 ):
-    sessions = db.get_sessions()
-    if sessions:
-        latest_session_id = sessions[0]["id"]
-        st.session_state.thread_id = latest_session_id
-        st.session_state.messages = db.load_chat_history(latest_session_id)
+    threads = db.get_threads()
+    if threads:
+        latest_thread_id = threads[0]["thread_id"]
+        st.session_state.thread_id = latest_thread_id
+        st.session_state.messages = db.load_chat_history(latest_thread_id)
         st.rerun()
 
 # --- Sidebar: Controls ---
 with st.sidebar:
     st.header("History")
-    sessions = db.get_sessions()
-    if sessions:
-        for s in sessions:
-            title = s.get("title") or s["id"]
-            # Use a slightly different label or style for the active session
+    threads = db.get_threads()
+    if threads:
+        for t in threads:
+            title = t.get("title") or t["thread_id"]
+            # Use a slightly different label or style for the active thread
             button_label = (
-                f"💬 {title}" if s["id"] == st.session_state.thread_id else title
+                f"💬 {title}" if t["thread_id"] == st.session_state.thread_id else title
             )
 
-            if st.button(
-                button_label, key=f"session_{s['id']}", use_container_width=True
-            ):
-                st.session_state.thread_id = s["id"]
-                st.session_state.messages = db.load_chat_history(s["id"])
-                st.session_state.new_session_requested = (
-                    False  # Reset flag when switching
-                )
-                st.rerun()
+            col1, col2 = st.columns([0.8, 0.2])
+            with col1:
+                if st.button(
+                    button_label,
+                    key=f"thread_{t['thread_id']}",
+                    use_container_width=True,
+                ):
+                    st.session_state.thread_id = t["thread_id"]
+                    st.session_state.messages = db.load_chat_history(t["thread_id"])
+                    st.session_state.new_session_requested = (
+                        False  # Reset flag when switching
+                    )
+                    st.rerun()
+            with col2:
+                if st.button("🗑️", key=f"del_{t['thread_id']}", help="Delete thread"):
+                    if db.delete_thread(t["thread_id"]):
+                        if st.session_state.thread_id == t["thread_id"]:
+                            st.session_state.thread_id = str(uuid.uuid4())
+                            st.session_state.messages = []
+                        st.rerun()
+                    else:
+                        st.error("Delete failed")
     else:
         st.info("No past conversations found.")
 
@@ -179,9 +212,9 @@ if prompt:
     # Reset the new session flag as it's now being used
     st.session_state.new_session_requested = False
 
-    # Ensure session exists in DB before saving messages
+    # Ensure thread exists in DB before saving messages
     if len(st.session_state.messages) == 0:
-        db.create_session(st.session_state.thread_id, title=prompt[:30] + "...")
+        db.create_thread(st.session_state.thread_id, title=prompt[:30] + "...")
 
     # Add user message to state and display
     st.session_state.messages.append(
