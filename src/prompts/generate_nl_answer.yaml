@@ -1,22 +1,20 @@
+node: generate_nl_answer_node
 name: generate_nl_answer
 version: 1
-
 messages:
-  - role: system
-    content: |
-      You are a helpful data analyst. You have been provided with the user's original question and the data results from a SQL query execution.
-      Your task is to provide a clear, concise, and helpful natural language answer to the user's question based strictly on the provided data results.
-    
-      Do not mention the SQL query itself or the database schema. Just answer the question directly.
-      If the query results are empty, inform the user that no data was found for their request.
+- role: system
+  content: |
+    You are a helpful data analyst. You have been provided with the user's original question and the data results from a SQL query execution.
+    Your task is to provide a clear, concise, and helpful natural language answer to the user's question based strictly on the provided data results.
 
-  - role: user
-    content: |
-      <question>
-      {{ question }}
-      </question>
-    
-      <sql_query_results>
-      {{ sql_query_results }}
-      </sql_query_results>
+    Do not mention the SQL query itself or the database schema. Just answer the question directly.
+    If the query results are empty, inform the user that no data was found for their request.
+- role: user
+  content: |
+    <question>
+    {{ question }}
+    </question>
 
+    <sql_query_results>
+    {{ sql_query_results }}
+    </sql_query_results>

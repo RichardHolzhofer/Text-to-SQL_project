@@ -7,6 +7,7 @@ import snowflake.connector
 from snowflake.connector.connection import SnowflakeConnection
 from supabase import create_client, Client
 from langchain.chat_models import init_chat_model
+from langfuse import get_client
 
 from src.exceptions.exception import (
     ConfigError,
@@ -51,6 +52,11 @@ class Config:
         self.sb_service_role_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
         self.sb_password = os.getenv("SUPABASE_PASSWORD")
 
+        # Langfuse settings for prompt management and tracing
+        self.lf_public_key = os.getenv("LANGFUSE_PUBLIC_KEY")
+        self.lf_secret_key = os.getenv("LANGFUSE_SECRET_KEY")
+        self.lf_host = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
+
         # LLM Model settings
         self.smart_model = os.getenv("SMART_LLM_MODEL")
         self.fast_model = os.getenv("FAST_LLM_MODEL")
@@ -80,6 +86,8 @@ class Config:
             "SUPABASE_PASSWORD",
             "SMART_LLM_MODEL",
             "FAST_LLM_MODEL",
+            "LANGFUSE_PUBLIC_KEY",
+            "LANGFUSE_SECRET_KEY",
         ]
         missing = [var for var in required if not os.getenv(var)]
         if missing:
@@ -181,3 +189,22 @@ class Config:
             self.logger.info(f"Initializing Fast LLM: {self.fast_model}")
             self._fast_llm = init_chat_model(self.fast_model)
         return self._fast_llm
+
+    def get_llm(self, model_name: str):
+        """
+        Returns an instance of an LLM for a specific model name.
+        Does NOT cache by default to allow dynamic parameter binding.
+        """
+        self.logger.info(f"Instantiating LLM for model: {model_name}")
+        return init_chat_model(model_name)
+
+    def get_langfuse(self):
+        """Returns a cached Langfuse client singleton."""
+        if not hasattr(self, "_langfuse") or self._langfuse is None:
+            self.logger.info("Initializing Langfuse client singleton via Config")
+            self._langfuse = get_client(
+                public_key=self.lf_public_key,
+                secret_key=self.lf_secret_key,
+                host=self.lf_host,
+            )
+        return self._langfuse

@@ -6,12 +6,11 @@ from src.config.config import Config
 from src.database.db import SupabaseDB
 from src.graph_builder.graph_builder import TextToSQLGraph
 from dotenv import load_dotenv
-from langfuse import get_client, propagate_attributes
+from langfuse import propagate_attributes
 from langfuse.langchain import CallbackHandler
 from langchain_core.messages import HumanMessage
 from src.utils.llm_utils import generate_conversation_title
 
-langfuse = get_client()
 
 # Load environment variables
 load_dotenv()
@@ -25,6 +24,8 @@ st.title("Text-to-SQL Agent")
 @st.cache_resource
 def get_db():
     config = Config()
+    # Initialize Langfuse via Config to set up the singleton for the session
+    config.get_langfuse()
     return SupabaseDB(config), config
 
 
@@ -241,7 +242,7 @@ if prompt:
                 with propagate_attributes(
                     trace_name="text-to-sql-app",
                     session_id=st.session_state.thread_id,
-                    user_id="streamlit-user",
+                    user_id=st.session_state.user_email,
                 ):
                     result = graph.invoke(
                         {
