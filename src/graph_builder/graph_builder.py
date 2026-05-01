@@ -1,7 +1,8 @@
 from src.config.config import Config
 from src.nodes.node import TextToSQLNodes
 from src.states.state import TextToSQLState
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.postgres import PostgresSaver
+from psycopg_pool import ConnectionPool
 from langgraph.graph import StateGraph, END
 
 
@@ -11,7 +12,15 @@ class TextToSQLGraph:
         self.config = Config()
         self.nodes = TextToSQLNodes(config=self.config)
         self.graph = None
-        self.memory = MemorySaver()
+
+        # Initialize Postgres connection pool for persistent memory
+        self.pool = ConnectionPool(
+            conninfo=self.config.sb_db_uri, max_size=20, kwargs={"autocommit": True}
+        )
+        self.memory = PostgresSaver(self.pool)
+
+        # Ensure the checkpoint tables exist in Supabase
+        self.memory.setup()
 
     def build_graph(self):
         # Define the StateGraph with the state schema

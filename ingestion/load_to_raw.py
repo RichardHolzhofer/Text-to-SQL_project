@@ -22,7 +22,7 @@ def load_raw_data(raw_schema_name: str, stage_name: str) -> None:
         raw_schema_name = raw_schema_name.upper()
 
         # Get connection
-        conn = config.get_connection(write_access=True)
+        conn = config.get_snowflake_connection(write_access=True)
         cursor = conn.cursor()
 
         # Set the current schema context

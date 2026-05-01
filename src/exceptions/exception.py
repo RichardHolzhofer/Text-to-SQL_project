@@ -70,3 +70,15 @@ class SchemaBuildError(NodeException):
 
 class SQLGenerationError(NodeException):
     """Raised when the SQL generation process fails."""
+
+
+class SupabaseConnectionError(PipelineException):
+    """Raised when there is an issue connecting to Supabase or during file transfer."""
+
+
+class SupabaseAuthError(PipelineException):
+    """Raised when Supabase authentication fails."""
+
+
+class SupabaseQueryError(PipelineException):
+    """Raised when a Supabase database query fails."""

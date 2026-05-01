@@ -2,6 +2,8 @@ import streamlit as st
 import uuid
 import pandas as pd
 import json
+from src.config.config import Config
+from src.database.db import SupabaseDB
 from src.graph_builder.graph_builder import TextToSQLGraph
 from dotenv import load_dotenv
 from langfuse import get_client, propagate_attributes
@@ -17,7 +19,24 @@ load_dotenv()
 st.set_page_config(page_title="Text-to-SQL Agent", layout="wide")
 st.title("Text-to-SQL Agent")
 
+
+# Initialize Config and Database
+@st.cache_resource
+def get_db():
+    config = Config()
+    return SupabaseDB(config), config
+
+
+db, config = get_db()
+
 # Initialize Session State
+if "user_id" not in st.session_state:
+    st.session_state.user_id = None
+if "user_email" not in st.session_state:
+    st.session_state.user_email = None
+if "new_session_requested" not in st.session_state:
+    st.session_state.new_session_requested = False
+
 if "thread_id" not in st.session_state:
     st.session_state.thread_id = str(uuid.uuid4())
 
@@ -38,16 +57,128 @@ except Exception as e:
     st.error(f"Failed to initialize the graph: {str(e)}")
     st.stop()
 
-# Sidebar for controls
+
+# --- Sidebar: Authentication ---
 with st.sidebar:
-    st.header("Controls")
-    if st.button("Start New Conversation"):
-        st.session_state.thread_id = str(uuid.uuid4())
-        st.session_state.messages = []
-        st.rerun()
+    st.header("Account")
+    if st.session_state.user_id is None:
+        auth_mode = st.radio("Mode", ["Login", "Sign Up"], horizontal=True)
+        email = st.text_input("Email")
+        password = st.text_input("Password", type="password")
+
+        if auth_mode == "Login":
+            if st.button("Login"):
+                success, message = db.sign_in(email, password)
+                if success:
+                    st.session_state.user_id = db.user_id
+                    st.session_state.user_email = db.user_email
+                    st.success(message)
+                    st.rerun()
+                else:
+                    st.error(message)
+        else:
+            if st.button("Sign Up"):
+                success, message = db.sign_up(email, password)
+                if success:
+                    st.success(message)
+                else:
+                    st.error(message)
+    else:
+        st.write(f"Logged in as: **{st.session_state.user_email}**")
+        if st.button("Logout", use_container_width=True):
+            db.sign_out()
+            st.session_state.user_id = None
+            st.session_state.user_email = None
+            st.session_state.messages = []
+            st.rerun()
+
+        with st.expander("Danger Zone"):
+            if st.button("Delete Account", type="primary", use_container_width=True):
+                if st.session_state.get("confirm_delete_account"):
+                    # Use an admin instance for deletion
+                    admin_db = SupabaseDB(config, admin=True)
+                    if admin_db.delete_user(st.session_state.user_id):
+                        st.success("Account deleted.")
+                        st.session_state.user_id = None
+                        st.session_state.user_email = None
+                        st.session_state.messages = []
+                        st.session_state.confirm_delete_account = False
+                        st.rerun()
+                    else:
+                        st.error("Failed to delete account.")
+                else:
+                    st.session_state.confirm_delete_account = True
+                    st.warning(
+                        "Are you sure? This will delete ALL your data. Click again to confirm."
+                    )
 
     st.markdown("---")
-    st.markdown("*(Future Feature: Load past conversations from database)*")
+
+# Stop the app here if user is not logged in
+if st.session_state.user_id is None:
+    st.info("Please login or sign up to use the Text-to-SQL Agent.")
+    st.stop()
+
+# Ensure the database instance knows who the current user is (for session-based calls)
+db.user_id = st.session_state.user_id
+db.user_email = st.session_state.user_email
+
+# --- Auto-load last session if starting fresh (and not explicitly requesting a new one) ---
+if (
+    st.session_state.user_id
+    and not st.session_state.messages
+    and not st.session_state.new_session_requested
+):
+    threads = db.get_threads()
+    if threads:
+        latest_thread_id = threads[0]["thread_id"]
+        st.session_state.thread_id = latest_thread_id
+        st.session_state.messages = db.load_chat_history(latest_thread_id)
+        st.rerun()
+
+# --- Sidebar: Controls ---
+with st.sidebar:
+    st.header("History")
+    threads = db.get_threads()
+    if threads:
+        for t in threads:
+            title = t.get("title") or t["thread_id"]
+            # Use a slightly different label or style for the active thread
+            button_label = (
+                f"💬 {title}" if t["thread_id"] == st.session_state.thread_id else title
+            )
+
+            col1, col2 = st.columns([0.8, 0.2])
+            with col1:
+                if st.button(
+                    button_label,
+                    key=f"thread_{t['thread_id']}",
+                    use_container_width=True,
+                ):
+                    st.session_state.thread_id = t["thread_id"]
+                    st.session_state.messages = db.load_chat_history(t["thread_id"])
+                    st.session_state.new_session_requested = (
+                        False  # Reset flag when switching
+                    )
+                    st.rerun()
+            with col2:
+                if st.button("🗑️", key=f"del_{t['thread_id']}", help="Delete thread"):
+                    if db.delete_thread(t["thread_id"]):
+                        if st.session_state.thread_id == t["thread_id"]:
+                            st.session_state.thread_id = str(uuid.uuid4())
+                            st.session_state.messages = []
+                        st.rerun()
+                    else:
+                        st.error("Delete failed")
+    else:
+        st.info("No past conversations found.")
+
+    st.markdown("---")
+    if st.button("Start New Conversation", type="primary", use_container_width=True):
+        st.session_state.thread_id = str(uuid.uuid4())
+        st.session_state.messages = []
+        st.session_state.new_session_requested = True
+        st.rerun()
 
 # Display chat messages from history
 if len(st.session_state.messages) == 0:
@@ -78,10 +209,19 @@ for i, msg in enumerate(st.session_state.messages):
 # Chat input
 prompt = st.chat_input("Ask a question about your data...")
 if prompt:
+    # Reset the new session flag as it's now being used
+    st.session_state.new_session_requested = False
+
+    # Ensure thread exists in DB before saving messages
+    if len(st.session_state.messages) == 0:
+        db.create_thread(st.session_state.thread_id, title=prompt[:30] + "...")
+
     # Add user message to state and display
     st.session_state.messages.append(
         {"role": "user", "type": "text", "content": prompt}
     )
+    db.save_message(st.session_state.thread_id, "user", prompt, "text")
+
     with st.chat_message("user"):
         st.markdown(prompt)
 
@@ -119,6 +259,9 @@ if prompt:
                     st.session_state.messages.append(
                         {"role": "assistant", "type": "warning", "content": explanation}
                     )
+                    db.save_message(
+                        st.session_state.thread_id, "assistant", explanation, "warning"
+                    )
 
                 # Check tabular intent
                 elif result.get("intent") == "tab" and result.get("tabular_answer"):
@@ -139,6 +282,9 @@ if prompt:
                     st.session_state.messages.append(
                         {"role": "assistant", "type": "dataframe", "content": data}
                     )
+                    db.save_message(
+                        st.session_state.thread_id, "assistant", data, "dataframe"
+                    )
 
                 # Fallback to Natural Language
                 elif result.get("answer"):
@@ -146,6 +292,9 @@ if prompt:
                     st.markdown(answer)
                     st.session_state.messages.append(
                         {"role": "assistant", "type": "text", "content": answer}
+                    )
+                    db.save_message(
+                        st.session_state.thread_id, "assistant", answer, "text"
                     )
                 else:
                     st.error(
