@@ -3,7 +3,7 @@ from src.config.config import Config
 from src.database.db import SupabaseDB
 
 
-def main():
+def setup_db():
     parser = argparse.ArgumentParser(description="Supabase Database Setup Tool")
     parser.add_argument(
         "--action",
@@ -34,4 +34,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    setup_db()

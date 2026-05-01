@@ -2,8 +2,8 @@ import json
 from langchain_core.messages import AIMessage
 
 from src.states.state import Table, RelationshipDigest, Schema, Router, SQLGenerator
-from src.utils.utils import load_prompt, load_yaml, dump_yaml
-from src.utils.llm_utils import convert_to_messages
+from src.utils.utils import dump_yaml, load_yaml
+from src.utils.llm_utils import run_prompt
 from src.logger.logger import logger
 from src.config.config import Config
 from src.exceptions.exception import SchemaBuildError, NodeException, SQLGenerationError
@@ -60,11 +60,6 @@ class TextToSQLNodes:
                 f"Building unified schema from {mart_schema_path} and {enhancement_schema_path}"
             )
 
-            self.table_extractor = self.smart_llm.with_structured_output(Table)
-            self.relationship_extractor = self.smart_llm.with_structured_output(
-                RelationshipDigest
-            )
-
             # Load raw YAML files
             mart_schema_yaml = load_yaml(mart_schema_path)
             enhancement_schema_yaml = load_yaml(enhancement_schema_path)
@@ -84,17 +79,12 @@ class TextToSQLNodes:
 
                 model_yaml_str = dump_yaml({"model": model})
 
-                # Load the prompt for table extraction
-                extract_table_prompt = load_prompt(
-                    "src/prompts/extract_table.yaml",
-                    {"model_yaml": model_yaml_str},
-                )
-
-                extract_table_prompt_messages = convert_to_messages(
-                    extract_table_prompt
-                )
-                table_schema = self.table_extractor.invoke(
-                    extract_table_prompt_messages
+                # Run structured extraction
+                table_schema = run_prompt(
+                    prompt_name="extract_table",
+                    variables={"model_yaml": model_yaml_str},
+                    config=self.config,
+                    output_schema=Table,
                 )
                 db_tables.append(table_schema)
 
@@ -106,16 +96,14 @@ class TextToSQLNodes:
                 "tables": [table.model_dump() for table in db_tables],
             }
 
-            extract_relationships_prompt = load_prompt(
-                "src/prompts/extract_relationships.yaml",
-                {"relationship_context": json.dumps(relationship_context, indent=2)},
-            )
-
-            extract_relationships_prompt_messages = convert_to_messages(
-                extract_relationships_prompt
-            )
-            relationship_digest = self.relationship_extractor.invoke(
-                extract_relationships_prompt_messages
+            # Run structured extraction
+            relationship_digest = run_prompt(
+                prompt_name="extract_relationships",
+                variables={
+                    "relationship_context": json.dumps(relationship_context, indent=2)
+                },
+                config=self.config,
+                output_schema=RelationshipDigest,
             )
 
             logger.info(
@@ -141,18 +129,14 @@ class TextToSQLNodes:
         Uses an LLM to determine if the user wants tabular or natural language format.
         """
         try:
-            logger.info("Evaluating intent for display format...")
-
-            router_llm = self.fast_llm.with_structured_output(Router)
-
-            intent_prompt = load_prompt(
-                "src/prompts/evaluate_intent.yaml",
-                {"question": state.question},
+            # Run structured routing
+            response = run_prompt(
+                prompt_name="evaluate_intent",
+                variables={"question": state.question},
+                config=self.config,
+                output_schema=Router,
+                use_fast_llm=True,
             )
-            intent_prompt_messages = convert_to_messages(intent_prompt)
-
-            # Simple string output
-            response = router_llm.invoke(intent_prompt_messages)
 
             return {"intent": response.route}
 
@@ -167,27 +151,17 @@ class TextToSQLNodes:
                 f"Generating SQL query for question: '{state.question}' (Iteration: {state.iteration_count + 1})"
             )
 
-            # Bind the LLM to our SQLGenerator schema
-            sql_extractor = self.smart_llm.with_structured_output(SQLGenerator)
-
             # Serialize the schema so the LLM can read it
             schema_json = json.dumps(state.schema.model_dump(), indent=2)
 
-            # Load the prompt with dynamic context
-            generate_sql_prompt = load_prompt(
-                "src/prompts/generate_sql.yaml",
-                {"schema_context": schema_json, "question": state.question},
+            # Run structured generation
+            generated = run_prompt(
+                prompt_name="generate_sql",
+                variables={"schema_context": schema_json, "question": state.question},
+                config=self.config,
+                chat_history=state.chat_history,
+                output_schema=SQLGenerator,
             )
-
-            # Convert loaded prompt into LangChain message objects
-            generate_sql_prompt_messages = convert_to_messages(generate_sql_prompt)
-
-            # Append real conversational history (if any)
-            if state.chat_history:
-                generate_sql_prompt_messages.extend(state.chat_history)
-
-            # Execute
-            generated = sql_extractor.invoke(generate_sql_prompt_messages)
 
             logger.info("SQL generation successful.")
             logger.info(
@@ -218,7 +192,7 @@ class TextToSQLNodes:
                 )
                 return {
                     "is_valid_query": False,
-                    "error_message": None,  # No Snowflake error, just unsupported
+                    "error_message": None,
                 }
 
             logger.info(
@@ -313,19 +287,17 @@ class TextToSQLNodes:
             if len(results_str) > 50000:
                 results_str = results_str[:50000] + "\n... [TRUNCATED]"
 
-            generate_nl_prompt = load_prompt(
-                "src/prompts/generate_nl_answer.yaml",
-                {
+            # Run NL generation
+            response = run_prompt(
+                prompt_name="generate_nl_answer",
+                variables={
                     "question": state.question,
                     "sql_query_results": results_str,
                 },
+                config=self.config,
+                chat_history=state.chat_history,
+                use_fast_llm=True,
             )
-            messages = convert_to_messages(generate_nl_prompt)
-
-            if state.chat_history:
-                messages.extend(state.chat_history)
-
-            response = self.fast_llm.invoke(messages)
             answer = response.content.strip()
 
             return {"answer": answer, "chat_history": [AIMessage(content=answer)]}

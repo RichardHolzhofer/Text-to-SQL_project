@@ -1,21 +1,20 @@
-name: relationships_extraction
+node: schema_builder_node
+name: extract_relationships
 version: 1
-
 messages:
-  - role: system
-    content: |
-      You are extracting explicit foreign key relationships from a dbt schema YAML file and table summaries.
+- role: system
+  content: |
+    You are extracting explicit foreign key relationships from a dbt schema YAML file and table summaries.
 
-      Rules:
-      - Include only relationships explicitly supported by dbt relationship tests.
-      - Do not invent relationships.
-      - Use only the fields defined in ForeignKeyRelationship.
-      - Prefer an empty list over guessed output.
+    Rules:
+    - Include only relationships explicitly supported by dbt relationship tests.
+    - Do not invent relationships.
+    - Use only the fields defined in ForeignKeyRelationship.
+    - Prefer an empty list over guessed output.
+- role: user
+  content: |
+    Extract explicit foreign key relationships from the dbt schema YAML and table summaries below.
 
-  - role: user
-    content: |
-      Extract explicit foreign key relationships from the dbt schema YAML and table summaries below.
-
-      <relationship_context>
-      {{ relationship_context }}
-      </relationship_context>
+    <relationship_context>
+    {{ relationship_context }}
+    </relationship_context>

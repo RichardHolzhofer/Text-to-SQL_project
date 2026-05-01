@@ -34,3 +34,14 @@ $env:LOADER_SNOWFLAKE_ACCOUNT    # PowerShell
 From the root directory, use the following command:
 
 uv run streamlit run src/ui/app.py
+
+---
+
+### SYNCING PROMPTS
+To keep your local YAML files and Langfuse in sync:
+
+# Push local changes to the cloud
+python sync_prompts.py --push
+
+# Pull cloud changes to local YAMLs
+python sync_prompts.py --pull
