@@ -1,16 +1,16 @@
 WITH customers AS (
-    SELECT * FROM {{ ref('dbt_int_customers') }}
+    SELECT * FROM {{ ref('int_customers') }}
 ),
 
 orders AS (
-    SELECT * FROM {{ ref('dbt_int_orders') }}
+    SELECT * FROM {{ ref('int_orders') }}
 ),
 
 stg_customers AS (
     SELECT
         customer_id,
         customer_unique_id
-    FROM {{ ref('dbt_stg_customers') }}
+    FROM {{ ref('stg_olist__customers') }}
 ),
 
 order_mapping AS (

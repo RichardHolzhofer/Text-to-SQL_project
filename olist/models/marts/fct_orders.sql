@@ -1,5 +1,5 @@
 WITH orders AS (
-    SELECT * FROM {{ ref('dbt_int_orders') }}
+    SELECT * FROM {{ ref('int_orders') }}
 ),
 
 stg_customers AS (
@@ -9,7 +9,7 @@ stg_customers AS (
         customer_city,
         customer_state,
         customer_zip_code
-    FROM {{ ref('dbt_stg_customers') }}
+    FROM {{ ref('stg_olist__customers') }}
 )
 
 SELECT

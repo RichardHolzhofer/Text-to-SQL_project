@@ -1,7 +1,7 @@
 version: 2
 
 models:
-  - name: dbt_stg_customers
+  - name: stg_olist__customers
     description: >
       This table has information about the customer and its location. Use it to identify unique customers in the orders table and to find the orders delivery location.
       Each order is assigned to a unique customer_id. This means that the same customer will get different ids for different orders.
@@ -37,7 +37,7 @@ models:
         tests:
           - not_null
 
-  - name: dbt_stg_category_translation
+  - name: stg_olist__category_translations
     description: "A mapping table to translate Portuguese product category names into English."
     columns:
       - name: product_category_name
@@ -51,7 +51,7 @@ models:
           - unique
           - not_null
 
-  - name: dbt_stg_geolocation
+  - name: stg_olist__geolocations
     description: "This table has information about Brazilian zip codes and its lat/lng coordinates. Note: Not a 1:1 master list."
     columns:
       - name: geolocation_zip_code
@@ -83,7 +83,7 @@ models:
         tests:
           - not_null
 
-  - name: dbt_stg_order_items
+  - name: stg_olist__order_items
     description: "This table includes data about the items purchased within each order."
     columns:
       - name: order_id
@@ -92,7 +92,7 @@ models:
           - not_null
           - relationships:
               arguments:
-                to: ref('dbt_stg_orders')
+                to: ref('stg_olist__orders')
                 field: order_id
       - name: order_item_id
         description: "Sequential number identifying number of items included in the same order."
@@ -104,7 +104,7 @@ models:
           - not_null
           - relationships:
               arguments:
-                to: ref('dbt_stg_products')
+                to: ref('stg_olist__products')
                 field: product_id
       - name: seller_id
         description: "Seller unique identifier."
@@ -112,7 +112,7 @@ models:
           - not_null
           - relationships:
               arguments:
-                to: ref('dbt_stg_sellers')
+                to: ref('stg_olist__sellers')
                 field: seller_id
       - name: shipping_limit_date
         description: "Shows the seller shipping limit date for handling the order over to the logistic partner."
@@ -135,7 +135,7 @@ models:
         tests:
           - not_null
 
-  - name: dbt_stg_order_payments
+  - name: stg_olist__order_payments
     description: "This table includes data about the orders payment options."
     columns:
       - name: order_id
@@ -144,7 +144,7 @@ models:
           - not_null
           - relationships:
               arguments:
-                to: ref('dbt_stg_orders')
+                to: ref('stg_olist__orders')
                 field: order_id
       - name: payment_sequential
         description: "A customer may pay an order with more than one payment method. If so, a sequence is created."
@@ -174,7 +174,7 @@ models:
         tests:
           - not_null
 
-  - name: dbt_stg_order_reviews
+  - name: stg_olist__order_reviews
     description: >
       This table includes data about the reviews made by the customers.
       Once the customer receives the product, they get a satisfaction survey.
@@ -189,7 +189,7 @@ models:
           - not_null
           - relationships:
               arguments:
-                to: ref('dbt_stg_orders')
+                to: ref('stg_olist__orders')
                 field: order_id
       - name: review_score
         description: "Note ranging from 1 to 5."
@@ -219,7 +219,7 @@ models:
         tests:
           - not_null
 
-  - name: dbt_stg_orders
+  - name: stg_olist__orders
     description: "This is the core table. From each order you might find all other information."
     columns:
       - name: order_id
@@ -234,7 +234,7 @@ models:
           - not_null
           - relationships:
               arguments:
-                to: ref('dbt_stg_customers')
+                to: ref('stg_olist__customers')
                 field: customer_id
       - name: order_status
         description: "Reference to the order status (delivered, shipped, etc)."
@@ -264,7 +264,7 @@ models:
         tests:
           - not_null
 
-  - name: dbt_stg_products
+  - name: stg_olist__products
     description: "This table includes data about the products sold by Olist."
     columns:
       - name: product_id
@@ -277,7 +277,7 @@ models:
         tests:
           - relationships:
               arguments:
-                to: ref('dbt_stg_category_translation')
+                to: ref('stg_olist__category_translations')
                 field: product_category_name
               config:
                 severity: warn
@@ -304,7 +304,7 @@ models:
         tests:
           - not_null
 
-  - name: dbt_stg_sellers
+  - name: stg_olist__sellers
     description: "This table includes data about the sellers that fulfilled orders made at Olist. Use it to find the seller location and to identify which seller fulfilled each product."
     columns:
       - name: seller_id

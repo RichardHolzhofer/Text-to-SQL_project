@@ -1,13 +1,13 @@
 [sqlfluff]
 dialect = snowflake
 templater = dbt
-project_dir = ./ecommerce_analytics
+project_dir = ./olist
 
 # Snowflake-specific rules
 [sqlfluff:templater:dbt]
-project_dir = ./ecommerce_analytics
-profiles_dir = ./ecommerce_analytics
-profile = ecommerce_analytics
+project_dir = ./olist
+profiles_dir = ./olist
+profile = olist
 target = dev
 
 [sqlfluff:indentation]

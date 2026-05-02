@@ -1,5 +1,5 @@
 WITH payments AS (
-    SELECT * FROM {{ ref('dbt_stg_order_payments') }}
+    SELECT * FROM {{ ref('stg_olist__order_payments') }}
 )
 
 SELECT

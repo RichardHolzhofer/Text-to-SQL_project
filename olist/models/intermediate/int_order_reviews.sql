@@ -1,5 +1,5 @@
 WITH reviews AS (
-    SELECT * FROM {{ ref('dbt_stg_order_reviews') }}
+    SELECT * FROM {{ ref('stg_olist__order_reviews') }}
 ),
 
 -- 1. Calculate the "Squashed" metrics

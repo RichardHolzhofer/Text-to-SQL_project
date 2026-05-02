@@ -61,4 +61,4 @@ def insert_schema(raw_schema_name: str) -> None:
 
 
 if __name__ == "__main__":
-    insert_schema(raw_schema_name="raw")
+    insert_schema(raw_schema_name="RAW_DATA")

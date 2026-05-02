@@ -1,8 +1,8 @@
 version: 2
 
 sources:
-  - name: dbt_stg
-    schema: raw
+  - name: olist
+    schema: RAW_DATA
     tables:
       - name: customers
       - name: geolocation
