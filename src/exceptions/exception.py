@@ -82,3 +82,7 @@ class SupabaseAuthError(PipelineException):
 
 class SupabaseQueryError(PipelineException):
     """Raised when a Supabase database query fails."""
+
+
+class PromptSyncError(PipelineException):
+    """Raised when the prompt synchronization process fails."""
