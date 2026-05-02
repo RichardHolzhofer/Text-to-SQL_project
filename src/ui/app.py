@@ -304,12 +304,20 @@ if prompt:
                     else "Not Synced"
                 )
 
+                metadata_dict = {
+                    "schema_updated_at": schema_ts,
+                    "fast_llm": config.fast_model,
+                    "smart_llm": config.smart_model,
+                    "max_retry": nodes.max_retry,
+                    "semantic_search_threshold": nodes.semantic_search_threshold,
+                }
+
                 # Graph state updates inside the propagate_attributes context
                 with propagate_attributes(
                     trace_name="text-to-sql-app",
                     session_id=st.session_state.thread_id,
                     user_id=st.session_state.user_email,
-                    metadata={"schema_updated_at": schema_ts},
+                    metadata=metadata_dict,
                 ):
                     result = graph.invoke(
                         {
@@ -335,7 +343,11 @@ if prompt:
                     )
 
                 # Check tabular intent
-                elif result.get("intent") == "tab" and result.get("tabular_answer"):
+                elif (
+                    result.get("router")
+                    and result.get("router").route == "tab"
+                    and result.get("tabular_answer") is not None
+                ):
                     data = result["tabular_answer"]
                     df = pd.DataFrame(data)
                     st.dataframe(df)

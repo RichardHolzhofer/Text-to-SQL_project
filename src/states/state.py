@@ -100,6 +100,22 @@ class Router(BaseModel):
         default="nl",
         description="Determines the desired output format based on the user's question. Output 'tab' if the user asks for a list, table, detailed records, or multiple results (e.g., 'show me the top 5 customers'). Output 'nl' if the user asks a question expecting a direct answer, a count, an average, or a summary (e.g., 'who is the best customer?', 'how many orders did we have?').",
     )
+    is_review_query: bool = Field(
+        default=False,
+        description="True if the user's question is asking about product reviews, customer feedback, opinions, or sentiments.",
+    )
+    is_semantic_intent: bool = Field(
+        default=False,
+        description="True if the user's question involves fuzzy concepts, feelings, sentiments, abstract features, or specific experiences that are unlikely to be exact matches in a database column (e.g., 'product quality', 'fast shipping', 'fabric softness', 'good battery life'). False for standard analytical questions (e.g., 'how many 5-star reviews?').",
+    )
+    use_semantic_search: bool = Field(
+        default=False,
+        description="Flag indicating if semantic vector search should be used.",
+    )
+    is_fallback: bool = Field(
+        default=False,
+        description="Flag indicating if we are currently in a fallback execution loop.",
+    )
 
 
 ### State for SQL generator
@@ -119,6 +135,22 @@ class SQLGenerator(BaseModel):
     )
 
 
+### State for Validator
+
+
+class Validator(BaseModel):
+    is_valid_query: Optional[bool] = Field(
+        default=None,
+        description="Flag set by a 'Validator' node. None means not validated yet.",
+    )
+    error_message: Optional[str] = Field(
+        default=None, description="The raw error string from Snowflake."
+    )
+    iteration_count: int = Field(
+        default=0, description="Counter for error-fixing loops."
+    )
+
+
 ### TextToSQLState main class
 
 
@@ -131,22 +163,16 @@ class TextToSQLState(BaseModel):
     # Schema extraction
     schema: Optional[Schema] = None
 
-    # Intent node
-    intent: Optional[Literal["nl", "tab"]] = None
+    # Router / Intent State
+    router: Optional[Router] = None
 
     # SQL Generation State
     generated_sql: Optional[SQLGenerator] = None
 
     # Validation / Looping State
-    is_valid_query: Optional[bool] = Field(
-        default=None,
-        description="Flag set by a 'Validator' node. None means not validated yet.",
-    )
-    error_message: Optional[str] = Field(
-        default=None, description="The raw error string from Snowflake."
-    )
-    iteration_count: int = Field(
-        default=0, description="Counter for error-fixing loops."
+    validator: Validator = Field(
+        default_factory=Validator,
+        description="State tracking for SQL validation and retry loops.",
     )
 
     # SQL Executer

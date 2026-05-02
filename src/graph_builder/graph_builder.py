@@ -29,6 +29,8 @@ class TextToSQLGraph:
         # Nodes
         workflow.add_node("schema_builder_node", self.nodes.build_schema)
         workflow.add_node("router_query_node", self.nodes.route_format)
+        workflow.add_node("review_intent_node", self.nodes.review_intent_node)
+        workflow.add_node("review_search_node", self.nodes.review_search_node)
         workflow.add_node("query_generator_node", self.nodes.generate_sql)
         workflow.add_node("validator_node", self.nodes.validate_sql)
         workflow.add_node("query_executer_node", self.nodes.execute_sql)
@@ -40,13 +42,53 @@ class TextToSQLGraph:
         # Edges
         workflow.set_entry_point("schema_builder_node")
         workflow.add_edge("schema_builder_node", "router_query_node")
-        workflow.add_edge("router_query_node", "query_generator_node")
+
+        def after_router(state: TextToSQLState):
+            if state.router and state.router.is_review_query:
+                return "review"
+            return "general"
+
+        workflow.add_conditional_edges(
+            "router_query_node",
+            after_router,
+            {
+                "review": "review_intent_node",
+                "general": "query_generator_node",
+            },
+        )
+
+        def after_review_intent(state: TextToSQLState):
+            if state.router and state.router.use_semantic_search:
+                return "semantic"
+            return "standard"
+
+        workflow.add_conditional_edges(
+            "review_intent_node",
+            after_review_intent,
+            {
+                "semantic": "review_search_node",
+                "standard": "query_generator_node",
+            },
+        )
+
+        workflow.add_edge("review_search_node", "validator_node")
         workflow.add_edge("query_generator_node", "validator_node")
         workflow.add_edge("validator_node", "query_executer_node")
 
-        # Routing to display format
+        # Routing to display format or fallback
         def format_router(state: TextToSQLState):
-            if state.intent == "tab":
+            # Check for fallback: 0 results on standard review query
+            if (
+                state.router
+                and state.router.is_review_query
+                and state.query_results is not None
+                and len(state.query_results) == 0
+                and not state.router.is_fallback
+                and not state.router.use_semantic_search
+            ):
+                return "fallback"
+
+            if state.router and state.router.route == "tab":
                 return "tabular"
             return "nl"
 
@@ -54,6 +96,7 @@ class TextToSQLGraph:
             "query_executer_node",
             format_router,
             {
+                "fallback": "review_intent_node",
                 "tabular": "generate_tabular_answer_node",
                 "nl": "generate_nl_answer_node",
             },
@@ -62,28 +105,6 @@ class TextToSQLGraph:
         workflow.add_edge("generate_tabular_answer_node", END)
         workflow.add_edge("generate_nl_answer_node", END)
 
-        """
-        # Routing logic
-        def should_continue(state: TextToSQLState):
-            # If the LLM explicitly said it can't answer, we stop (later: route to clarification)
-            if state.generated_sql and state.generated_sql.unsupported_explanation:
-                return "end"
-
-            if state.is_valid_query:
-                return "end"
-            if state.iteration_count >= 3:
-                return "end"
-            return "retry"
-
-        workflow.add_conditional_edges(
-            "validator_node",
-            should_continue,
-            {
-                "retry": "query_generator_node",
-                "end": END,
-            },
-        )
-        """
         # Compile and add checkpointer for memory
         self.graph = workflow.compile(checkpointer=self.memory)
 
