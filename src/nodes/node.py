@@ -2,7 +2,14 @@ import json
 from langchain_core.messages import AIMessage
 from datetime import datetime
 
-from src.states.state import Table, RelationshipDigest, Schema, Router, SQLGenerator
+from src.states.state import (
+    Table,
+    RelationshipDigest,
+    Schema,
+    Router,
+    SQLGenerator,
+    Validator,
+)
 from src.utils.utils import dump_yaml, load_yaml
 from src.utils.llm_utils import run_prompt
 from src.logger.logger import logger
@@ -26,6 +33,7 @@ class TextToSQLNodes:
             self.fast_llm = config.get_fast_llm()
             self.db = SupabaseDB(config, admin=True)
             self.max_retry = 3
+            self.semantic_search_threshold = 0.75
             logger.info("TextToSQLNodes initialized using Config LLMs and Supabase.")
         except Exception as e:
             logger.exception("Failed to initialize TextToSQLNodes.")
@@ -44,11 +52,9 @@ class TextToSQLNodes:
         try:
             # Reset intermediate state variables for each new turn
             reset_state = {
-                "intent": None,
+                "router": None,
                 "generated_sql": None,
-                "is_valid_query": None,
-                "error_message": None,
-                "iteration_count": 0,
+                "validator": Validator(),
                 "query_results": None,
                 "answer": None,
                 "tabular_answer": None,
@@ -153,7 +159,8 @@ class TextToSQLNodes:
 
     def route_format(self, state: TextToSQLState):
         """
-        Uses an LLM to determine if the user wants tabular or natural language format.
+        Uses an LLM to determine if the user wants tabular or natural language format,
+        and also detects review and semantic intents.
         """
         try:
             # Run structured routing
@@ -165,17 +172,87 @@ class TextToSQLNodes:
                 use_fast_llm=True,
             )
 
-            return {"intent": response.route}
+            return {"router": response}
 
         except Exception:
             logger.exception("Failed to route format.")
-            # We still need a default fallback in case of API/Network errors
-            return {"intent": "nl"}
+            # Default fallback
+            return {"router": Router(route="nl")}
+
+    def review_intent_node(self, state: TextToSQLState):
+        """
+        Decides the search strategy for a review query.
+        """
+        router = state.router
+        logger.info(
+            f"Evaluating review intent. Semantic Intent: {router.is_semantic_intent}, Fallback: {router.is_fallback}"
+        )
+
+        use_semantic = router.is_semantic_intent
+        is_fallback_now = router.is_fallback
+
+        # If we have executed a query previously, got 0 results, and haven't fallen back yet
+        if (
+            state.query_results is not None
+            and len(state.query_results) == 0
+            and not router.is_fallback
+        ):
+            logger.info(
+                "Standard query returned 0 results. Forcing fallback to semantic search."
+            )
+            use_semantic = True
+            is_fallback_now = True
+
+        # If we are already in fallback, we must use semantic search
+        if router.is_fallback:
+            use_semantic = True
+
+        updated_router = router.model_copy(
+            update={"use_semantic_search": use_semantic, "is_fallback": is_fallback_now}
+        )
+        return {"router": updated_router}
+
+    def review_search_node(self, state: TextToSQLState):
+        """
+        Generates the specialized vector SQL using the semantic prompt.
+        """
+        try:
+            logger.info(
+                f"Generating Semantic SQL query for question: '{state.question}'"
+            )
+
+            # Serialize the schema so the LLM can read it
+            schema_json = json.dumps(state.schema.model_dump(), indent=2)
+
+            # Run structured generation for semantic search
+            generated = run_prompt(
+                prompt_name="generate_semantic_review_sql",
+                variables={
+                    "schema_context": schema_json,
+                    "question": state.question,
+                    "threshold": self.semantic_search_threshold,
+                },
+                config=self.config,
+                chat_history=state.chat_history,
+                output_schema=SQLGenerator,
+            )
+
+            logger.info("Semantic SQL generation successful.")
+            if generated.thought_process:
+                logger.info(
+                    f"Thought Process snippet: {generated.thought_process[:100]}..."
+                )
+
+            return {"generated_sql": generated}
+
+        except Exception as e:
+            logger.exception("Failed to create Semantic SQL query.")
+            raise SQLGenerationError(e)
 
     def generate_sql(self, state: TextToSQLState):
         try:
             logger.info(
-                f"Generating SQL query for question: '{state.question}' (Iteration: {state.iteration_count + 1})"
+                f"Generating SQL query for question: '{state.question}' (Iteration: {state.validator.iteration_count + 1})"
             )
 
             # Serialize the schema so the LLM can read it
@@ -212,18 +289,32 @@ class TextToSQLNodes:
 
             sql = state.generated_sql.sql_query
 
+            # Clean up LLM formatting artifacts (literal \n, markdown blocks)
+            if sql:
+                sql = sql.replace("\\n", "\n").replace("\\t", " ")
+                if "```sql" in sql:
+                    sql = sql.split("```sql")[1].split("```")[0]
+                elif "```" in sql:
+                    sql = sql.split("```")[1].split("```")[0]
+                sql = sql.strip()
+                # Mutate the state so downstream nodes get the cleaned version
+                state.generated_sql.sql_query = sql
+
             # If the model explicitly said it can't answer, don't run EXPLAIN and mark as invalid
-            if sql is None:
+            if not sql:
                 logger.info(
                     "No SQL generated (unsupported question). Skipping EXPLAIN validation."
                 )
                 return {
-                    "is_valid_query": False,
-                    "error_message": None,
+                    "validator": Validator(
+                        is_valid_query=False,
+                        error_message=None,
+                        iteration_count=state.validator.iteration_count,
+                    )
                 }
 
             logger.info(
-                f"Validating SQL via EXPLAIN (Iteration: {state.iteration_count + 1})"
+                f"Validating SQL via EXPLAIN (Iteration: {state.validator.iteration_count + 1})"
             )
 
             # Execute EXPLAIN in Snowflake
@@ -233,17 +324,22 @@ class TextToSQLNodes:
 
             logger.info("SQL validation successful.")
             return {
-                "is_valid_query": True,
-                "error_message": None,
+                "validator": Validator(
+                    is_valid_query=True,
+                    error_message=None,
+                    iteration_count=state.validator.iteration_count,
+                )
             }
 
         except Exception as e:
             error_str = str(e)
             logger.warning(f"SQL validation failed: {error_str}")
             return {
-                "is_valid_query": False,
-                "error_message": error_str,
-                "iteration_count": state.iteration_count + 1,
+                "validator": Validator(
+                    is_valid_query=False,
+                    error_message=error_str,
+                    iteration_count=state.validator.iteration_count + 1,
+                )
             }
 
     def execute_sql(self, state: TextToSQLState):
@@ -253,7 +349,7 @@ class TextToSQLNodes:
         """
         try:
             if (
-                not state.is_valid_query
+                not state.validator.is_valid_query
                 or not state.generated_sql
                 or not state.generated_sql.sql_query
             ):

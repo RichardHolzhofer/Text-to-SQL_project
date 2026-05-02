@@ -1,4 +1,5 @@
 import argparse
+import json
 import requests
 from requests.auth import HTTPBasicAuth
 from pathlib import Path
@@ -61,16 +62,41 @@ def sync_prompts():
                 # The rest is config
                 metadata = data
 
-                print(f"Creating/Updating prompt: {name} (Node: {metadata['node']})...")
-                lf.create_prompt(
-                    name=name,
-                    prompt=messages,
-                    config=metadata,
-                    type="chat",
-                    labels=["production"],
-                    tags=[metadata["node"]],  # Add node as a tag for UI filtering
-                )
-                print(f"  [SUCCESS] {name} pushed.")
+                # Check for changes before pushing
+                push_needed = True
+                try:
+                    existing_prompt = lf.get_prompt(name, label="production")
+
+                    def normalize(obj):
+                        return json.dumps(obj, sort_keys=True, separators=(",", ":"))
+
+                    existing_clean_msgs = [
+                        {k: v for k, v in m.items() if k != "type"}
+                        for m in existing_prompt.prompt
+                    ]
+                    existing_config = existing_prompt.config or {}
+
+                    if normalize(existing_clean_msgs) == normalize(
+                        messages
+                    ) and normalize(existing_config) == normalize(metadata):
+                        push_needed = False
+                        print(f"  [SKIPPED] {name} is already up-to-date in Langfuse.")
+                except Exception:
+                    pass
+
+                if push_needed:
+                    print(
+                        f"Creating/Updating prompt: {name} (Node: {metadata['node']})..."
+                    )
+                    lf.create_prompt(
+                        name=name,
+                        prompt=messages,
+                        config=metadata,
+                        type="chat",
+                        labels=["production"],
+                        tags=[metadata["node"]],  # Add node as a tag for UI filtering
+                    )
+                    print(f"  [SUCCESS] {name} pushed.")
             except Exception as e:
                 print(f"  [FAILED] {name}: {e}")
 
