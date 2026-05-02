@@ -1,21 +1,41 @@
 import yaml
+from pathlib import Path
 from typing import Any, Dict
 from langchain_core.prompts import ChatPromptTemplate
 
 
-def load_yaml(path: str) -> Dict[str, Any]:
+def _str_presenter(dumper, data):
+    """Forces block scalars (|) for multi-line strings in YAML."""
+    if len(data.splitlines()) > 1:
+        return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
+    return dumper.represent_scalar("tag:yaml.org,2002:str", data)
+
+
+# Register the representer globally for this process
+yaml.add_representer(str, _str_presenter)
+
+
+def load_yaml(path: str | Path) -> Dict[str, Any]:
     """
-    Load and parse a YAML file from a string path.
+    Load and parse a YAML file from a string path or Path object.
     """
     with open(path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
 
 
-def dump_yaml(data: dict):
+def dump_yaml(data: dict) -> str:
     """
     Convert a dictionary/object to a YAML string.
     """
-    return yaml.safe_dump(data, sort_keys=False, allow_unicode=True)
+    return yaml.dump(data, sort_keys=False, allow_unicode=True)
+
+
+def save_yaml(data: dict, path: str | Path):
+    """
+    Save a dictionary/object to a YAML file.
+    """
+    with open(path, "w", encoding="utf-8") as f:
+        yaml.dump(data, f, sort_keys=False, allow_unicode=True)
 
 
 def get_prompt_template(prompt_name: str, config=None):
