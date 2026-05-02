@@ -7,19 +7,33 @@ on:
     branches: [main]
 
 jobs:
-  lint:
-    name: Linting and Formatting
+  ci:
+    name: Linting and Prompt Sync
     runs-on: ubuntu-latest
     
-    # Passing secrets as environment variables for SQLFluff (dbt templater)
     env:
       SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+      DBT_SNOWFLAKE_DATABASE: ${{ secrets.DBT_SNOWFLAKE_DATABASE }}
+      DBT_SNOWFLAKE_WAREHOUSE: ${{ secrets.DBT_SNOWFLAKE_WAREHOUSE }}
+      DBT_SNOWFLAKE_ROLE: ${{ secrets.DBT_SNOWFLAKE_ROLE }}
+      AGENT_SNOWFLAKE_ROLE: ${{ secrets.AGENT_SNOWFLAKE_ROLE }}
+      DBT_SNOWFLAKE_SCHEMA: ${{ secrets.DBT_SNOWFLAKE_SCHEMA }}
+      AGENT_SNOWFLAKE_SCHEMA: ${{ secrets.AGENT_SNOWFLAKE_SCHEMA }}
       DBT_SNOWFLAKE_USER: ${{ secrets.DBT_SNOWFLAKE_USER }}
       DBT_SNOWFLAKE_PASSWORD: ${{ secrets.DBT_SNOWFLAKE_PASSWORD }}
-      DBT_SNOWFLAKE_ROLE: ${{ secrets.DBT_SNOWFLAKE_ROLE }}
-      DBT_SNOWFLAKE_WAREHOUSE: ${{ secrets.DBT_SNOWFLAKE_WAREHOUSE }}
-      DBT_SNOWFLAKE_DATABASE: ${{ secrets.DBT_SNOWFLAKE_DATABASE }}
-      DBT_SNOWFLAKE_SCHEMA: ${{ secrets.DBT_SNOWFLAKE_SCHEMA }}
+      AGENT_SNOWFLAKE_USER: ${{ secrets.AGENT_SNOWFLAKE_USER }}
+      AGENT_SNOWFLAKE_PASSWORD: ${{ secrets.AGENT_SNOWFLAKE_PASSWORD }}
+      SUPABASE_PROJECT_NAME: ${{ secrets.SUPABASE_PROJECT_NAME }}
+      SUPABASE_DB_URI: ${{ secrets.SUPABASE_DB_URI }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_PASSWORD: ${{ secrets.SUPABASE_PASSWORD }}
+      SMART_LLM_MODEL: ${{ secrets.SMART_LLM_MODEL }}
+      FAST_LLM_MODEL: ${{ secrets.FAST_LLM_MODEL }}
+      LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+      LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+      LANGFUSE_HOST: ${{ secrets.LANGFUSE_HOST }}
 
     steps:
       - name: Checkout code
@@ -47,3 +61,7 @@ jobs:
 
       - name: SQLFluff Lint
         run: uv run sqlfluff lint . --dialect snowflake
+
+      - name: Sync Prompts (Push to main only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: uv run python sync_prompts.py --push
