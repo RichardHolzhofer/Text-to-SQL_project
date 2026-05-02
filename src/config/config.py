@@ -29,20 +29,20 @@ class Config:
         self.logger.info("Environment variables loaded from .env")
 
         # Snowflake connection settings
-        self.sf_account = os.getenv("LOADER_SNOWFLAKE_ACCOUNT")
-        self.sf_database = os.getenv("LOADER_SNOWFLAKE_DATABASE")
-        self.sf_warehouse = os.getenv("LOADER_SNOWFLAKE_WAREHOUSE")
-        self.sf_loader_role = os.getenv("LOADER_SNOWFLAKE_ROLE")
-        self.sf_reader_role = os.getenv("READER_SNOWFLAKE_ROLE")
-        self.sf_loader_schema = os.getenv("LOADER_SNOWFLAKE_SCHEMA")
-        self.sf_reader_schema = os.getenv("READER_SNOWFLAKE_SCHEMA")
+        self.sf_account = os.getenv("SNOWFLAKE_ACCOUNT")
+        self.sf_database = os.getenv("DBT_SNOWFLAKE_DATABASE")
+        self.sf_warehouse = os.getenv("DBT_SNOWFLAKE_WAREHOUSE")
+        self.sf_dbt_role = os.getenv("DBT_SNOWFLAKE_ROLE")
+        self.sf_agent_role = os.getenv("AGENT_SNOWFLAKE_ROLE")
+        self.sf_dbt_schema = os.getenv("DBT_SNOWFLAKE_SCHEMA")
+        self.sf_agent_schema = os.getenv("AGENT_SNOWFLAKE_SCHEMA")
 
-        # Identity settings (Loader vs Reader)
-        self.sf_loader_user = os.getenv("LOADER_SNOWFLAKE_USER")
-        self.sf_loader_pass = os.getenv("LOADER_SNOWFLAKE_PASSWORD")
+        # Identity settings (DBT vs Agent)
+        self.sf_dbt_user = os.getenv("DBT_SNOWFLAKE_USER")
+        self.sf_dbt_pass = os.getenv("DBT_SNOWFLAKE_PASSWORD")
 
-        self.sf_reader_user = os.getenv("READER_SNOWFLAKE_USER")
-        self.sf_reader_pass = os.getenv("READER_SNOWFLAKE_PASSWORD")
+        self.sf_agent_user = os.getenv("AGENT_SNOWFLAKE_USER")
+        self.sf_agent_pass = os.getenv("AGENT_SNOWFLAKE_PASSWORD")
 
         # Supabase settings for persistant memory handling
         self.sb_project_name = os.getenv("SUPABASE_PROJECT_NAME")
@@ -67,17 +67,17 @@ class Config:
     def _validate_config(self):
         """Ensure critical environment variables are present."""
         required = [
-            "LOADER_SNOWFLAKE_ACCOUNT",
-            "LOADER_SNOWFLAKE_DATABASE",
-            "LOADER_SNOWFLAKE_WAREHOUSE",
-            "LOADER_SNOWFLAKE_ROLE",
-            "READER_SNOWFLAKE_ROLE",
-            "LOADER_SNOWFLAKE_SCHEMA",
-            "READER_SNOWFLAKE_SCHEMA",
-            "LOADER_SNOWFLAKE_USER",
-            "LOADER_SNOWFLAKE_PASSWORD",
-            "READER_SNOWFLAKE_USER",
-            "READER_SNOWFLAKE_PASSWORD",
+            "SNOWFLAKE_ACCOUNT",
+            "DBT_SNOWFLAKE_DATABASE",
+            "DBT_SNOWFLAKE_WAREHOUSE",
+            "DBT_SNOWFLAKE_ROLE",
+            "AGENT_SNOWFLAKE_ROLE",
+            "DBT_SNOWFLAKE_SCHEMA",
+            "AGENT_SNOWFLAKE_SCHEMA",
+            "DBT_SNOWFLAKE_USER",
+            "DBT_SNOWFLAKE_PASSWORD",
+            "AGENT_SNOWFLAKE_USER",
+            "AGENT_SNOWFLAKE_PASSWORD",
             "SUPABASE_PROJECT_NAME",
             "SUPABASE_DB_URI",
             "SUPABASE_URL",
@@ -124,17 +124,17 @@ class Config:
         Initialize and return a Snowflake connection.
 
         Args:
-            write_access (bool): If True, uses Loader credentials.
-                                 If False (default), uses Reader credentials.
+            write_access (bool): If True, uses DBT credentials.
+                                 If False (default), uses AGENT credentials.
         """
         try:
-            access_type = "LOADER (Write)" if write_access else "READER (Read-Only)"
+            access_type = "DBT (Write)" if write_access else "AGENT (Read-Only)"
             self.logger.info(f"Creating Snowflake connection with {access_type} access")
 
-            user = self.sf_loader_user if write_access else self.sf_reader_user
-            password = self.sf_loader_pass if write_access else self.sf_reader_pass
-            role = self.sf_loader_role if write_access else self.sf_reader_role
-            schema = self.sf_loader_schema if write_access else self.sf_reader_schema
+            user = self.sf_dbt_user if write_access else self.sf_agent_user
+            password = self.sf_dbt_pass if write_access else self.sf_agent_pass
+            role = self.sf_dbt_role if write_access else self.sf_agent_role
+            schema = self.sf_dbt_schema if write_access else self.sf_agent_schema
 
             return snowflake.connector.connect(
                 user=user,

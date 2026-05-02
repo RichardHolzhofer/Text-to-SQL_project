@@ -2,11 +2,11 @@
 # Name your project! Project names should contain only lowercase characters
 # and underscores. A good package name should reflect your organization's
 # name or the intended use of these models
-name: 'ecommerce_analytics'
+name: 'olist'
 version: '1.0.0'
 
 # This setting configures which "profile" dbt uses for this project.
-profile: 'ecommerce_analytics'
+profile: 'olist'
 
 # These configurations specify where dbt should look for different types of files.
 # The `model-paths` config, for example, states that models in this project can be
@@ -23,15 +23,14 @@ clean-targets:         # directories to be removed by `dbt clean`
   - "dbt_packages"
 
 models:
-  ecommerce_analytics:
-
-    dbt_stg:
+  olist:
+    staging:
       +materialized: view
-      +schema: stg
-    dbt_int:
+      +schema: STAGING
+    intermediate:
       +materialized: view
-      +schema: int
-    dbt_mrt:
+      +schema: INTERMEDIATE
+    marts:
       +materialized: table
-      +schema: mrt
+      +schema: MART
 

@@ -66,4 +66,4 @@ def put_to_stage(raw_schema_name: str, stage_name: str) -> None:
 
 
 if __name__ == "__main__":
-    put_to_stage(raw_schema_name="raw", stage_name="ecommerce_raw_stage")
+    put_to_stage(raw_schema_name="RAW_DATA", stage_name="olist_raw_stage")

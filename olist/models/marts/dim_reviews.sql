@@ -1,5 +1,5 @@
 WITH reviews AS (
-    SELECT * FROM {{ ref('dbt_int_order_reviews') }}
+    SELECT * FROM {{ ref('int_order_reviews') }}
 )
 
 SELECT

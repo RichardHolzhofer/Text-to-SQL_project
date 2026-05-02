@@ -1,5 +1,5 @@
 WITH order_items AS (
-    SELECT * FROM {{ ref('dbt_int_order_items') }}
+    SELECT * FROM {{ ref('int_order_items') }}
 ),
 
 orders AS (
@@ -7,7 +7,7 @@ orders AS (
         order_id,
         order_status,
         order_purchase_timestamp
-    FROM {{ ref('dbt_int_orders') }}
+    FROM {{ ref('int_orders') }}
 )
 
 SELECT
@@ -17,8 +17,7 @@ SELECT
     oi.seller_id,
     oi.price,
     oi.freight_value,
-    oi.product_category_name,
-    oi.product_category_name_english,
+    oi.product_category_name_english AS product_category,
     oi.seller_city,
     oi.seller_state,
     o.order_status,

@@ -1,5 +1,5 @@
 WITH geolocation AS (
-    SELECT * FROM {{ ref('dbt_stg_geolocation') }}
+    SELECT * FROM {{ ref('stg_olist__geolocations') }}
 ),
 
 ranked_names AS (
