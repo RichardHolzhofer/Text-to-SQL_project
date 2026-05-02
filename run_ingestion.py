@@ -1,8 +1,9 @@
 import sys
-from ingestion.create_schema import insert_schema
-from ingestion.upload_to_stage import put_to_stage
-from ingestion.load_to_raw import load_raw_data
+
 from ingestion.config import logger
+from ingestion.create_schema import insert_schema
+from ingestion.load_to_raw import load_raw_data
+from ingestion.upload_to_stage import put_to_stage
 from src.exceptions.exception import IngestionException
 
 

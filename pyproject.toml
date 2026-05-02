@@ -31,3 +31,7 @@ dependencies = [
     "psycopg>=3.3.3",
     "langchain-openai>=1.2.1",
 ]
+
+[tool.ruff]
+lint.select = ["E", "F", "I"]
+lint.ignore = ["E501"]

@@ -1,9 +1,10 @@
+from langgraph.checkpoint.postgres import PostgresSaver
+from langgraph.graph import END, StateGraph
+from psycopg_pool import ConnectionPool
+
 from src.config.config import Config
 from src.nodes.node import TextToSQLNodes
 from src.states.state import TextToSQLState
-from langgraph.checkpoint.postgres import PostgresSaver
-from psycopg_pool import ConnectionPool
-from langgraph.graph import StateGraph, END
 
 
 class TextToSQLGraph:

@@ -1,4 +1,5 @@
 import argparse
+
 from src.config.config import Config
 from src.database.db import SupabaseDB
 

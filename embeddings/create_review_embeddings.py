@@ -1,5 +1,5 @@
-from src.exceptions.exception import EmbeddingCreationError
 from embeddings.config import config, logger
+from src.exceptions.exception import EmbeddingCreationError
 
 
 def create_embeddings(

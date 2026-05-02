@@ -1,13 +1,14 @@
 import os
 from pathlib import Path
 from typing import Any, Dict
+
+import snowflake.connector
 import yaml
 from dotenv import load_dotenv
-import snowflake.connector
-from snowflake.connector.connection import SnowflakeConnection
-from supabase import create_client, Client
 from langchain.chat_models import init_chat_model
 from langfuse import Langfuse
+from snowflake.connector.connection import SnowflakeConnection
+from supabase import Client, create_client
 
 from src.exceptions.exception import (
     ConfigError,

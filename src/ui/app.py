@@ -1,18 +1,19 @@
-import streamlit as st
-import uuid
-import pandas as pd
 import json
+import uuid
 from datetime import datetime
+
+import pandas as pd
+import streamlit as st
+from dotenv import load_dotenv
+from langchain_core.messages import HumanMessage
+from langfuse import propagate_attributes
+from langfuse.langchain import CallbackHandler
+
 from src.config.config import Config
 from src.database.db import SupabaseDB
 from src.graph_builder.graph_builder import TextToSQLGraph
-from dotenv import load_dotenv
-from langfuse import propagate_attributes
-from langfuse.langchain import CallbackHandler
-from langchain_core.messages import HumanMessage
-from src.utils.llm_utils import generate_conversation_title
 from src.states.state import TextToSQLState
-
+from src.utils.llm_utils import generate_conversation_title
 
 # Load environment variables
 load_dotenv()
