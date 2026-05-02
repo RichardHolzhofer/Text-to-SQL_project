@@ -7,7 +7,7 @@ import snowflake.connector
 from snowflake.connector.connection import SnowflakeConnection
 from supabase import create_client, Client
 from langchain.chat_models import init_chat_model
-from langfuse import get_client
+from langfuse import Langfuse
 
 from src.exceptions.exception import (
     ConfigError,
@@ -202,7 +202,7 @@ class Config:
         """Returns a cached Langfuse client singleton."""
         if not hasattr(self, "_langfuse") or self._langfuse is None:
             self.logger.info("Initializing Langfuse client singleton via Config")
-            self._langfuse = get_client(
+            self._langfuse = Langfuse(
                 public_key=self.lf_public_key,
                 secret_key=self.lf_secret_key,
                 host=self.lf_host,

@@ -29,4 +29,5 @@ dependencies = [
     "langgraph-checkpoint-postgres>=3.0.5",
     "psycopg-pool>=3.3.0",
     "psycopg>=3.3.3",
+    "langchain-openai>=1.2.1",
 ]

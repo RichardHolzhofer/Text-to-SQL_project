@@ -1,11 +1,13 @@
 import json
 from langchain_core.messages import AIMessage
+from datetime import datetime
 
 from src.states.state import Table, RelationshipDigest, Schema, Router, SQLGenerator
 from src.utils.utils import dump_yaml, load_yaml
 from src.utils.llm_utils import run_prompt
 from src.logger.logger import logger
 from src.config.config import Config
+from src.database.db import SupabaseDB
 from src.exceptions.exception import SchemaBuildError, NodeException, SQLGenerationError
 from src.states.state import TextToSQLState
 
@@ -22,8 +24,9 @@ class TextToSQLNodes:
             self.config = config
             self.smart_llm = config.get_smart_llm()
             self.fast_llm = config.get_fast_llm()
+            self.db = SupabaseDB(config, admin=True)
             self.max_retry = 3
-            logger.info("TextToSQLNodes initialized using Config LLMs.")
+            logger.info("TextToSQLNodes initialized using Config LLMs and Supabase.")
         except Exception as e:
             logger.exception("Failed to initialize TextToSQLNodes.")
             raise NodeException(e)
@@ -55,6 +58,24 @@ class TextToSQLNodes:
                 logger.info("Schema is already loaded in state. Skipping extraction.")
                 reset_state["schema"] = state.schema
                 return reset_state
+
+            # 2. Check Supabase Cache (Unless force_refresh is True)
+            if not state.force_refresh:
+                cache_data = self.db.get_schema_cache("unified_schema")
+                if cache_data:
+                    logger.info("Schema found in Supabase cache. Loading...")
+                    try:
+                        final_schema = Schema.model_validate(cache_data)
+                        reset_state["schema"] = final_schema
+                        return reset_state
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to validate cached schema: {e}. Rebuilding."
+                        )
+            else:
+                logger.info(
+                    "force_refresh is True. Ignoring cache and rebuilding schema."
+                )
 
             logger.info(
                 f"Building unified schema from {mart_schema_path} and {enhancement_schema_path}"
@@ -114,9 +135,15 @@ class TextToSQLNodes:
             final_schema = Schema(
                 tables=db_tables,
                 relationships=relationship_digest.relationships,
+                updated_at=datetime.now().isoformat(),
             )
 
             logger.info("Unified schema build complete.")
+
+            # 4. Save to Supabase Cache
+            logger.info("Saving newly built schema to Supabase cache...")
+            self.db.insert_schema_cache("unified_schema", final_schema.model_dump())
+
             reset_state["schema"] = final_schema
             return reset_state
 

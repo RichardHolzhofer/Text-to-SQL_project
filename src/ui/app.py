@@ -2,6 +2,7 @@ import streamlit as st
 import uuid
 import pandas as pd
 import json
+from datetime import datetime
 from src.config.config import Config
 from src.database.db import SupabaseDB
 from src.graph_builder.graph_builder import TextToSQLGraph
@@ -10,6 +11,7 @@ from langfuse import propagate_attributes
 from langfuse.langchain import CallbackHandler
 from langchain_core.messages import HumanMessage
 from src.utils.llm_utils import generate_conversation_title
+from src.states.state import TextToSQLState
 
 
 # Load environment variables
@@ -177,12 +179,61 @@ with st.sidebar:
     else:
         st.info("No past conversations found.")
 
-    st.markdown("---")
     if st.button("Start New Conversation", type="primary", use_container_width=True):
         st.session_state.thread_id = str(uuid.uuid4())
         st.session_state.messages = []
         st.session_state.new_session_requested = True
         st.rerun()
+
+    st.markdown("---")
+    st.header("System")
+
+    # Fetch the latest sync timestamp for the UI
+    try:
+        sync_response = (
+            db.supabase_conn.table("schema_cache")
+            .select("updated_at")
+            .eq("key", "unified_schema")
+            .order("updated_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        last_sync_raw = (
+            sync_response.data[0]["updated_at"] if sync_response.data else None
+        )
+        # Format the timestamp for better readability if it exists
+        if last_sync_raw:
+            # Parse UTC and convert to local system timezone
+            dt_utc = datetime.fromisoformat(last_sync_raw.replace("Z", "+00:00"))
+            dt_local = dt_utc.astimezone()
+            last_sync_display = dt_local.strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            last_sync_display = "Never"
+    except Exception:
+        last_sync_display = "Error fetching"
+
+    if st.button(
+        "🔄 Sync Schema Metadata",
+        help="Rebuilds the schema cache from Snowflake/dbt (takes ~2 mins)",
+        use_container_width=True,
+    ):
+        with st.status("Syncing metadata...", expanded=True) as status:
+            try:
+                st.write("Building unified schema...")
+                # Create a dummy state with force_refresh=True
+                dummy_state = TextToSQLState(
+                    question="internal_sync", force_refresh=True
+                )
+                # Call the node directly
+                nodes.build_schema(dummy_state)
+                status.update(label="Sync Complete!", state="complete", expanded=False)
+                st.success("Schema metadata updated successfully!")
+                st.rerun()  # Rerun to refresh the timestamp display
+            except Exception as e:
+                status.update(label="Sync Failed", state="error")
+                st.error(f"Sync failed: {e}")
+
+    st.caption(f"Last Schema Sync: **{last_sync_display}**")
 
 # Display chat messages from history
 if len(st.session_state.messages) == 0:
@@ -238,11 +289,27 @@ if prompt:
                 langfuse_handler = CallbackHandler()
                 graph_config["callbacks"] = [langfuse_handler]
 
+                # Fetch the LATEST schema timestamp for tracing observability
+                schema_info = (
+                    db.supabase_conn.table("schema_cache")
+                    .select("updated_at")
+                    .eq("key", "unified_schema")
+                    .order("updated_at", desc=True)
+                    .limit(1)
+                    .execute()
+                )
+                schema_ts = (
+                    schema_info.data[0]["updated_at"]
+                    if schema_info.data
+                    else "Not Synced"
+                )
+
                 # Graph state updates inside the propagate_attributes context
                 with propagate_attributes(
                     trace_name="text-to-sql-app",
                     session_id=st.session_state.thread_id,
                     user_id=st.session_state.user_email,
+                    metadata={"schema_updated_at": schema_ts},
                 ):
                     result = graph.invoke(
                         {
