@@ -1,7 +1,7 @@
 version: 2
 
 models:
-  - name: dbt_int_customers
+  - name: int_customers
     description: "Intermediate table that deduplicates customers to one row per human (customer_unique_id) and aggregates their order history."
     columns:
       - name: customer_unique_id
@@ -33,7 +33,7 @@ models:
         tests:
           - not_null
     
-  - name: dbt_int_order_payments
+  - name: int_order_payments
     description: >
       Intermediate table that aggregates all payment installments and methods into 
       a single row per order. This prevents revenue duplication when joining to 
@@ -76,7 +76,7 @@ models:
               arguments:
                 values: [0, 1]
 
-  - name: dbt_int_order_items
+  - name: int_order_items
     description: >
       Enriched order items table. Joins raw items with product categories 
       (translated to English) and seller location data. 
@@ -120,7 +120,7 @@ models:
       - name: seller_state
         description: "State where the seller is located."
   
-  - name: dbt_int_order_reviews
+  - name: int_order_reviews
     description: >
       Intermediate table that aggregates reviews to a single row per order. 
       Calculates average scores while preserving the latest comment text and 
@@ -148,7 +148,7 @@ models:
       - name: latest_review_answer_timestamp
         description: "The timestamp when the seller or Olist replied to the review."
 
-  - name: dbt_int_orders
+  - name: int_orders
     description: >
       The "Master Order" intermediate table. It consolidates the core order lifecycle 
       with customer geography, detailed payment breakdowns, and full review metadata. 
@@ -214,7 +214,7 @@ models:
               arguments:
                 values: [0, 1]
   
-  - name: dbt_int_geolocation
+  - name: int_geolocations
     description: >
       A deduplicated lookup table for Brazilian zip codes. 
       It provides a single 'centroid' (average lat/lng) and the most frequent 

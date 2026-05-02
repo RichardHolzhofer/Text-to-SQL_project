@@ -76,10 +76,10 @@ def create_embeddings(
 
 if __name__ == "__main__":
     create_embeddings(
-        source_schema="RAW_MRT",
-        target_schema="RAW_MRT",
-        source_table="DBT_MRT_REVIEWS",
-        target_table="DBT_MRT_REVIEW_EMBEDDINGS",
+        source_schema="OLIST_MART",
+        target_schema="OLIST_MART",
+        source_table="dim_reviews",
+        target_table="dim_review_embeddings",
         id_column="ORDER_ID",
         text_column="REVIEW_COMBINED_TEXT",
     )

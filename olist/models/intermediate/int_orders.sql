@@ -1,13 +1,13 @@
 WITH orders AS (
-    SELECT * FROM {{ ref('dbt_stg_orders') }}
+    SELECT * FROM {{ ref('stg_olist__orders') }}
 ),
 
 payments AS (
-    SELECT * FROM {{ ref('dbt_int_order_payments') }}
+    SELECT * FROM {{ ref('int_order_payments') }}
 ),
 
 reviews AS (
-    SELECT * FROM {{ ref('dbt_int_order_reviews') }}
+    SELECT * FROM {{ ref('int_order_reviews') }}
 )
 
 SELECT

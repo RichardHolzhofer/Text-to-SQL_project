@@ -1,9 +1,9 @@
 WITH customers AS (
-    SELECT * FROM {{ ref('dbt_stg_customers') }}
+    SELECT * FROM {{ ref('stg_olist__customers') }}
 ),
 
 orders AS (
-    SELECT * FROM {{ ref('dbt_stg_orders') }}
+    SELECT * FROM {{ ref('stg_olist__orders') }}
 ),
 
 customer_stats AS (

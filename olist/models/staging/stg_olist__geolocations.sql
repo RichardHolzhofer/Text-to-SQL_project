@@ -1,5 +1,5 @@
 WITH source AS (
-    SELECT * FROM {{ source('dbt_stg', 'geolocation') }}
+    SELECT * FROM {{ source('olist', 'geolocation') }}
 ),
 
 renamed AS (

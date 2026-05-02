@@ -2,7 +2,7 @@ import sys
 from ingestion.create_schema import insert_schema
 from ingestion.upload_to_stage import put_to_stage
 from ingestion.load_to_raw import load_raw_data
-from ingestion.logger import logger
+from ingestion.config import logger
 from src.exceptions.exception import IngestionException
 
 
@@ -16,8 +16,8 @@ def run_pipeline() -> None:
     Catches and logs any IngestionException or unexpected failures.
     """
     # Define centralized configuration constants
-    RAW_SCHEMA = "raw"
-    STAGE_NAME = "ecommerce_raw_stage"
+    RAW_SCHEMA = "RAW_DATA"
+    STAGE_NAME = "olist_raw_stage"
 
     try:
         logger.info("--- Ingestion Pipeline Started ---")

@@ -86,4 +86,4 @@ def load_raw_data(raw_schema_name: str, stage_name: str) -> None:
 
 
 if __name__ == "__main__":
-    load_raw_data(raw_schema_name="raw", stage_name="ecommerce_raw_stage")
+    load_raw_data(raw_schema_name="RAW_DATA", stage_name="olist_raw_stage")

@@ -1,17 +1,17 @@
 WITH order_items AS (
-    SELECT * FROM {{ ref('dbt_stg_order_items') }}
+    SELECT * FROM {{ ref('stg_olist__order_items') }}
 ),
 
 products AS (
-    SELECT * FROM {{ ref('dbt_stg_products') }}
+    SELECT * FROM {{ ref('stg_olist__products') }}
 ),
 
 categories AS (
-    SELECT * FROM {{ ref('dbt_stg_category_translation') }}
+    SELECT * FROM {{ ref('stg_olist__category_translations') }}
 ),
 
 sellers AS (
-    SELECT * FROM {{ ref('dbt_stg_sellers') }}
+    SELECT * FROM {{ ref('stg_olist__sellers') }}
 )
 
 SELECT

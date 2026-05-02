@@ -1,5 +1,5 @@
 WITH source AS (
-    SELECT * FROM {{ source('dbt_stg', 'customers') }}
+    SELECT * FROM {{ source('olist', 'customers') }}
 ),
 
 renamed AS (
