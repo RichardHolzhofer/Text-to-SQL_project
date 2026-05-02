@@ -1,8 +1,9 @@
 from typing import Annotated, Optional
-from pydantic import BaseModel, Field
-from typing_extensions import List, Literal
+
 from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
+from pydantic import BaseModel, Field
+from typing_extensions import List, Literal
 
 ### States for schema extraction
 

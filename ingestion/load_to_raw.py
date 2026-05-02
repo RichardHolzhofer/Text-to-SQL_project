@@ -1,5 +1,5 @@
-from src.exceptions.exception import DataLoadError
 from ingestion.config import config, logger
+from src.exceptions.exception import DataLoadError
 
 
 def load_raw_data(raw_schema_name: str, stage_name: str) -> None:

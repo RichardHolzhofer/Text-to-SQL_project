@@ -1,6 +1,8 @@
+from typing import Any, Dict, List, Optional, Tuple
+
 import psycopg2
-from typing import List, Dict, Any, Tuple, Optional
 from supabase import Client
+
 from src.config.config import Config
 from src.exceptions.exception import (
     SupabaseAuthError,

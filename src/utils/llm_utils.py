@@ -1,5 +1,5 @@
-from src.utils.utils import get_prompt_template
 from src.logger.logger import logger
+from src.utils.utils import get_prompt_template
 
 
 def run_prompt(
