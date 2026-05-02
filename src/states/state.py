@@ -79,6 +79,10 @@ class Schema(BaseModel):
         default_factory=list,
         description="Explicit foreign key relationships between tables",
     )
+    updated_at: Optional[str] = Field(
+        default=None,
+        description="The timestamp when this schema was last synced/built.",
+    )
 
 
 class RelationshipDigest(BaseModel):
@@ -159,4 +163,10 @@ class TextToSQLState(BaseModel):
     tabular_answer: Optional[List[dict]] = Field(
         default=None,
         description="The results stored as a list of dictionaries if tabular format is requested.",
+    )
+
+    # Force Cache Refresh
+    force_refresh: bool = Field(
+        default=False,
+        description="If True, the schema builder will ignore the cache and rebuild from scratch.",
     )
