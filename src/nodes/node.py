@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, SystemMessage
 
 from src.config.config import Config
 from src.database.db import SupabaseDB
@@ -34,7 +34,9 @@ class TextToSQLNodes:
             self.fast_llm = config.get_fast_llm()
             self.db = SupabaseDB(config, admin=True)
             self.max_retry = 3
-            self.semantic_search_threshold = 0.75
+            self.semantic_search_threshold = 0.85
+            self.mart_schema_path = "olist/models/marts/_marts_schema.yml"
+            self.enhancement_schema_path = "embeddings/_embeddings_schema.yml"
             logger.info("TextToSQLNodes initialized using Config LLMs and Supabase.")
         except Exception as e:
             logger.exception("Failed to initialize TextToSQLNodes.")
@@ -43,8 +45,6 @@ class TextToSQLNodes:
     def build_schema(
         self,
         state: TextToSQLState,
-        mart_schema_path="ecommerce_analytics/models/dbt_mrt/_dbt_mrt_schema.yml",
-        enhancement_schema_path="embeddings/_embeddings_schema.yml",
     ):
         """
         Gathers dbt metadata and embeddings metadata to create a unified
@@ -85,12 +85,12 @@ class TextToSQLNodes:
                 )
 
             logger.info(
-                f"Building unified schema from {mart_schema_path} and {enhancement_schema_path}"
+                f"Building unified schema from {self.mart_schema_path} and {self.enhancement_schema_path}"
             )
 
             # Load raw YAML files
-            mart_schema_yaml = load_yaml(mart_schema_path)
-            enhancement_schema_yaml = load_yaml(enhancement_schema_path)
+            mart_schema_yaml = load_yaml(self.mart_schema_path)
+            enhancement_schema_yaml = load_yaml(self.enhancement_schema_path)
 
             # Merge the model lists to incorporate embeddings
             unified_model_list = mart_schema_yaml.get("models", [])
@@ -180,40 +180,7 @@ class TextToSQLNodes:
             # Default fallback
             return {"router": Router(route="nl")}
 
-    def review_intent_node(self, state: TextToSQLState):
-        """
-        Decides the search strategy for a review query.
-        """
-        router = state.router
-        logger.info(
-            f"Evaluating review intent. Semantic Intent: {router.is_semantic_intent}, Fallback: {router.is_fallback}"
-        )
-
-        use_semantic = router.is_semantic_intent
-        is_fallback_now = router.is_fallback
-
-        # If we have executed a query previously, got 0 results, and haven't fallen back yet
-        if (
-            state.query_results is not None
-            and len(state.query_results) == 0
-            and not router.is_fallback
-        ):
-            logger.info(
-                "Standard query returned 0 results. Forcing fallback to semantic search."
-            )
-            use_semantic = True
-            is_fallback_now = True
-
-        # If we are already in fallback, we must use semantic search
-        if router.is_fallback:
-            use_semantic = True
-
-        updated_router = router.model_copy(
-            update={"use_semantic_search": use_semantic, "is_fallback": is_fallback_now}
-        )
-        return {"router": updated_router}
-
-    def review_search_node(self, state: TextToSQLState):
+    def semantic_query_generator(self, state: TextToSQLState):
         """
         Generates the specialized vector SQL using the semantic prompt.
         """
@@ -244,7 +211,21 @@ class TextToSQLNodes:
                     f"Thought Process snippet: {generated.thought_process[:100]}..."
                 )
 
-            return {"generated_sql": generated}
+            chat_update = []
+            if generated.sql_query:
+                chat_update = [
+                    AIMessage(
+                        content=f"Generated Semantic SQL:\n```sql\n{generated.sql_query}\n```"
+                    )
+                ]
+            elif generated.unsupported_explanation:
+                chat_update = [AIMessage(content=generated.unsupported_explanation)]
+
+            # Ensure we reset the fuzzy warning if the new generation didn't provide one
+            if not generated.fuzzy_match_warning:
+                generated.fuzzy_match_warning = None
+
+            return {"generated_sql": generated, "chat_history": chat_update}
 
         except Exception as e:
             logger.exception("Failed to create Semantic SQL query.")
@@ -273,7 +254,21 @@ class TextToSQLNodes:
                 f"Thought Process snippet: {generated.thought_process[:100]}..."
             )
 
-            return {"generated_sql": generated}
+            chat_update = []
+            if generated.sql_query:
+                chat_update = [
+                    AIMessage(
+                        content=f"Generated SQL:\n```sql\n{generated.sql_query}\n```"
+                    )
+                ]
+            elif generated.unsupported_explanation:
+                chat_update = [AIMessage(content=generated.unsupported_explanation)]
+
+            # Ensure we reset the fuzzy warning if the new generation didn't provide one
+            if not generated.fuzzy_match_warning:
+                generated.fuzzy_match_warning = None
+
+            return {"generated_sql": generated, "chat_history": chat_update}
 
         except Exception as e:
             logger.exception("Failed to create SQL query.")
@@ -308,7 +303,7 @@ class TextToSQLNodes:
                 )
                 return {
                     "validator": Validator(
-                        is_valid_query=False,
+                        is_valid_query=True,  # Mark as valid so we don't retry, but execute will skip
                         error_message=None,
                         iteration_count=state.validator.iteration_count,
                     )
@@ -340,7 +335,12 @@ class TextToSQLNodes:
                     is_valid_query=False,
                     error_message=error_str,
                     iteration_count=state.validator.iteration_count + 1,
-                )
+                ),
+                "chat_history": [
+                    SystemMessage(
+                        content=f"SQL Validation Error: {error_str}\nPlease correct the query based on this error."
+                    )
+                ],
             }
 
     def execute_sql(self, state: TextToSQLState):
@@ -370,14 +370,60 @@ class TextToSQLNodes:
                         columns = [col[0] for col in cursor.description]
                         rows = cursor.fetchall()
                         for row in rows:
-                            results.append(dict(zip(columns, row)))
+                            # Convert Decimals to float/int for JSON serialization
+                            processed_row = {}
+                            for k, v in zip(columns, row):
+                                if (
+                                    hasattr(v, "__class__")
+                                    and v.__class__.__name__ == "Decimal"
+                                ):
+                                    processed_row[k] = (
+                                        float(v) if "." in str(v) else int(v)
+                                    )
+                                else:
+                                    processed_row[k] = v
+                            results.append(processed_row)
+
+            is_empty = False
+            if len(results) == 0:
+                is_empty = True
+            elif len(results) == 1:
+                row = results[0]
+                values = list(row.values())
+                # Treat a single row with only 0 or None as "empty" (common for COUNT/SUM with no underlying data)
+                if all(v in (0, 0.0, None) for v in values):
+                    is_empty = True
+
+            if is_empty:
+                error_str = "Query executed successfully but returned 0 results."
+                logger.warning(error_str)
+                return {
+                    "validator": Validator(
+                        is_valid_query=False,
+                        error_message=error_str,
+                        iteration_count=state.validator.iteration_count + 1,
+                    ),
+                    "chat_history": [SystemMessage(content=error_str)],
+                }
 
             logger.info(f"Execution successful. Fetched {len(results)} rows.")
             return {"query_results": results}
 
         except Exception as e:
-            logger.exception("Failed to execute SQL query.")
-            raise NodeException(f"Execution failed: {e}")
+            error_str = str(e)
+            logger.warning(f"SQL execution failed: {error_str}")
+            return {
+                "validator": Validator(
+                    is_valid_query=False,
+                    error_message=error_str,
+                    iteration_count=state.validator.iteration_count + 1,
+                ),
+                "chat_history": [
+                    SystemMessage(
+                        content=f"SQL Execution Error: {error_str}\nPlease correct the query based on this error."
+                    )
+                ],
+            }
 
     def generate_tabular_answer(self, state: TextToSQLState):
         """

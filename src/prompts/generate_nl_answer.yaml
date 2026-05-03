@@ -11,10 +11,12 @@ messages:
     If the query results are empty, inform the user that no data was found for their request.
 - role: user
   content: |
+    User Question:
     <question>
     {{ question }}
     </question>
 
+    SQL Query Results:
     <sql_query_results>
     {{ sql_query_results }}
     </sql_query_results>

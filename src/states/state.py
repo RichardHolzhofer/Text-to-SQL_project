@@ -134,6 +134,10 @@ class SQLGenerator(BaseModel):
         default=None,
         description="A polite explanation for the user if the question cannot be answered (e.g., missing tables or columns).",
     )
+    fuzzy_match_warning: Optional[str] = Field(
+        default=None,
+        description="A brief warning explaining that EDITDISTANCE was used to find similar records, as exact matches were not found.",
+    )
 
 
 ### State for Validator
