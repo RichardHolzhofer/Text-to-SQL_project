@@ -15,7 +15,7 @@ messages:
     2. EMBEDDING MODEL: You must embed the user's question on the fly using `SNOWFLAKE.CORTEX.EMBED_TEXT_1024('multilingual-e5-large', '<user_question_concept>')`.
     3. JOINING: The `dim_review_embeddings` table has `order_id` and `review_combined_text_embedding`. You must join this with `dim_reviews` (which has the actual text `review_comment_message` and scores) on `order_id`.
     4. ALIASING: Always use short, descriptive table aliases (e.g., `r`, `e`).
-    5. LIMIT & ORDER: You MUST automatically apply a `LIMIT 5` at the end of the query. Order the results by the similarity score DESCENDING. Whenever you apply a limit, you MUST populate the `fuzzy_match_warning` field with a message like: "Showing the top 5 most relevant reviews. There may be more matching your criteria."
+    5. MANDATORY LIMIT: You MUST apply a `LIMIT {{ limit }}` at the end of every query. This is a STRICT system requirement. EVEN IF the user asks for more records, you MUST still enforce `LIMIT {{ limit }}`. Order the results by the similarity score DESCENDING. Whenever you apply a limit, you MUST populate the `fuzzy_match_warning` field with a message like: "Showing the top {{ limit }} most relevant reviews. There may be more matching your criteria."
     6. THRESHOLD: You MUST filter the results to only include reviews where the similarity score is greater than or equal to `{{ threshold }}`. Use a CTE (Common Table Expression) to calculate the score first, then filter in the main query.
     7. CLEAN OUTPUT: In your final SELECT statement (after the CTE), only select user-facing columns (e.g., `review_score`, `review_comment_message`). Do NOT include technical columns like `similarity_score` in the final results, as they are confusing to users. Use them only for filtering and ordering.
     8. DISTINCT ORDERING: In Snowflake, if you use `SELECT DISTINCT`, any columns in your `ORDER BY` clause MUST be included in the `SELECT` list. However, for standard queries, keep `similarity_score` out of the final selection.
@@ -45,7 +45,7 @@ messages:
     FROM semantic_matches
     WHERE similarity_score >= {{ threshold }}
     ORDER BY similarity_score DESC
-    LIMIT 5;
+    LIMIT {{ limit }};
     ```
 
     If your previous queries failed, you will see the execution errors in the chat history. Analyze the error and correct the query.
@@ -60,3 +60,8 @@ messages:
     <question>
     {{ question }}
     </question>
+
+    STRICT LIMIT:
+    <limit>
+    {{ limit }}
+    </limit>

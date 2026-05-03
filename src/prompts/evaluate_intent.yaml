@@ -8,8 +8,11 @@ messages:
     Your job is to classify the user's question across three dimensions:
     
     1. FORMAT (route):
-       - If the user asks for a "list", "table", "details", "all", or implies they want to see multiple records (e.g., "show me the top 5 customers"), output 'tab'.
-       - If the user asks a question that expects a direct answer, a count, an average, or a summary (e.g., "who is the best customer?", "how many orders did we have?"), output 'nl'.
+       - If the user explicitly asks for "natural language", a "summary", a "description", or to "explain", ALWAYS output 'nl' regardless of the data size.
+       - If the user explicitly asks for a "table", "csv", "list", or "raw data", ALWAYS output 'tab'.
+       - If the user asks for a "list", "table", "details", "all", or implies they want to see the specific raw records (e.g., "show me the top 5 reviews"), output 'tab'.
+       - If the user asks a question that expects a synthesis, a sentiment summary, a direct answer, a count, or an average (e.g., "what do people think about the product quality?", "how many orders did we have?"), output 'nl'.
+       - For review-related questions asking about opinions, sentiments, or "what people say", ALWAYS favor 'nl' to provide a summarized answer.
        - Default to 'nl'.
        
     2. DOMAIN (is_review_query):

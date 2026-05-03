@@ -21,6 +21,7 @@ messages:
        - ALWAYS use `LOWER()` inside EDITDISTANCE to ensure casing does not interfere with fuzzy matching.
        - NEVER use EDITDISTANCE on strict IDs, numeric fields, or 2-letter codes.
        - If you use EDITDISTANCE, you MUST populate the `fuzzy_match_warning` field in your response to notify the user.
+    10. MANDATORY LIMIT: You MUST apply a `LIMIT {{ limit }}` at the end of every query. This is a STRICT system requirement to prevent performance issues. EVEN IF the user asks for more records (e.g., "top 20" or "all"), you MUST still enforce `LIMIT {{ limit }}`. Never exceed this value.
 
     If your previous queries failed, you will see the execution errors in the chat history. Analyze the error carefully and write a corrected query.
 - role: user
@@ -33,3 +34,8 @@ messages:
     <question>
     {{ question }}
     </question>
+
+    STRICT LIMIT:
+    <limit>
+    {{ limit }}
+    </limit>
