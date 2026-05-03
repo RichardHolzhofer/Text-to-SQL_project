@@ -218,3 +218,6 @@ force_tool_call.ipynb
 
 # Snowflake
 snowflake.txt
+
+# Generated CSVs
+generated_csvs/
