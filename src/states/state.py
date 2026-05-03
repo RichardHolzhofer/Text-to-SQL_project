@@ -156,6 +156,25 @@ class Validator(BaseModel):
     )
 
 
+### State for Tabular Response
+
+
+class TabularResponse(BaseModel):
+    data: List[dict] = Field(
+        default_factory=list, description="The truncated data for UI display."
+    )
+    answer: str = Field(
+        default="", description="The transparency disclaimer or explanation."
+    )
+    total_count: int = Field(
+        default=0, description="The total number of records found in the database."
+    )
+    is_capped: bool = Field(
+        default=False,
+        description="True if the results were capped by the safety limit.",
+    )
+
+
 ### TextToSQLState main class
 
 
@@ -184,6 +203,10 @@ class TextToSQLState(BaseModel):
     query_results: Optional[List[dict]] = Field(
         default=None, description="The results from executing the SQL query."
     )
+    is_capped: bool = Field(
+        default=False,
+        description="True if the results were capped by the safety limit (e.g., 5000 rows).",
+    )
 
     # NL answer
     answer: Optional[str] = Field(
@@ -191,9 +214,9 @@ class TextToSQLState(BaseModel):
     )
 
     # Tabular answer
-    tabular_answer: Optional[List[dict]] = Field(
+    tabular_answer: Optional[TabularResponse] = Field(
         default=None,
-        description="The results stored as a list of dictionaries if tabular format is requested.",
+        description="The structured results if tabular format is requested.",
     )
 
     # Force Cache Refresh

@@ -11,12 +11,13 @@ messages:
     If the query results are empty, inform the user that no data was found for their request.
 
     MANDATORY TRANSPARENCY DISCLAIMER:
-    If the `Result Count` is equal to or greater than the `System Limit`, you MUST start your response with the following exact phrase: 
-    "Based on the first {{ result_count }} records found matching your criteria..."
+    If the `Total Count` is greater than the `Displayed Count`, you MUST start your response with the following exact phrase: 
+    "Based on the first {{ result_count }} records (out of {{ total_count }} total) matching your criteria..."
     
     This is non-negotiable and must be the very first sentence of your response.
+    Additionally, you should mention that the full dataset is available for download via the button below.
 
-    Do NOT show a disclaimer for aggregate results (like a single row with an average or sum).
+    Do NOT show a disclaimer for aggregate results (like a single row with an average or sum) or if Total Count equals Displayed Count.
 
     FORMATTING:
     - Use clear, professional language.
@@ -35,12 +36,12 @@ messages:
     </sql_query_results>
 
     Result Metadata:
-    - Result Count:
+    - Displayed Count:
     <result_count>
     {{ result_count }}
     </result_count>
 
-    - System Limit:
-    <limit_used>
-    {{ limit_used }}
-    </limit_used>
+    - Total Count:
+    <total_count>
+    {{ total_count }}
+    </total_count>

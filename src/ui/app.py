@@ -1,4 +1,3 @@
-import json
 import uuid
 from datetime import datetime
 
@@ -14,6 +13,15 @@ from src.database.db import SupabaseDB
 from src.graph_builder.graph_builder import TextToSQLGraph
 from src.states.state import TextToSQLState
 from src.utils.llm_utils import generate_conversation_title
+
+
+@st.cache_data
+def convert_to_csv(data):
+    if not data:
+        return ""
+    df = pd.DataFrame(data)
+    return df.to_csv(index=False).encode("utf-8")
+
 
 # Load environment variables
 load_dotenv()
@@ -248,19 +256,40 @@ for i, msg in enumerate(st.session_state.messages):
         if msg["type"] == "text":
             st.markdown(msg["content"])
         elif msg["type"] == "dataframe":
-            df = pd.DataFrame(msg["content"])
+            # msg["content"] is now a dict with 'data' and 'answer' keys
+            content = msg["content"]
+            if isinstance(content, dict):
+                if content.get("answer"):
+                    st.markdown(content["answer"])
+                df = pd.DataFrame(content.get("data", []))
+            else:
+                # Fallback for old history
+                df = pd.DataFrame(content)
             st.dataframe(df)
-            if len(df) > 30:
-                json_data = json.dumps(msg["content"], indent=2)
-                st.download_button(
-                    label="Download as JSON",
-                    data=json_data,
-                    file_name="results.json",
-                    mime="application/json",
-                    key=f"download_hist_{i}",
-                )
         elif msg["type"] == "warning":
             st.warning(msg["content"])
+
+        show_download = False
+        if msg.get("full_data"):
+            data_len = len(msg["full_data"])
+            if msg["type"] == "dataframe":
+                if data_len > 10:
+                    show_download = True
+            elif msg["type"] == "text":
+                if data_len > 5:
+                    show_download = True
+
+        if show_download:
+            csv = convert_to_csv(msg["full_data"])
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            user_email = st.session_state.get("user_email", "user").split("@")[0]
+            st.download_button(
+                label="Download Full Results (CSV)",
+                data=csv,
+                file_name=f"{user_email}_{timestamp}.csv",
+                mime="text/csv",
+                key=f"download_full_hist_{i}",
+            )
 
 # Chat input
 prompt = st.chat_input("Ask a question about your data...")
@@ -370,25 +399,47 @@ if prompt:
                             "warning",
                         )
 
-                    data = result["tabular_answer"]
+                    tab_resp = result["tabular_answer"]
+                    if tab_resp.answer:
+                        st.markdown(tab_resp.answer)
+
+                    data = tab_resp.data
+                    full_results = result.get("query_results")
                     df = pd.DataFrame(data)
                     st.dataframe(df)
 
-                    # Render download button if > 30 rows
-                    if len(df) > 30:
-                        json_data = json.dumps(data, indent=2)
+                    if full_results and len(full_results) > 10:
+                        csv = convert_to_csv(full_results)
+                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        user_email = st.session_state.get("user_email", "user").split(
+                            "@"
+                        )[0]
                         st.download_button(
-                            label="Download as JSON",
-                            data=json_data,
-                            file_name="results.json",
-                            mime="application/json",
-                            key=f"download_new_{len(st.session_state.messages)}",
+                            label="Download Full Results (CSV)",
+                            data=csv,
+                            file_name=f"{user_email}_{timestamp}.csv",
+                            mime="text/csv",
+                            key=f"download_full_new_tab_{len(st.session_state.messages)}",
                         )
+
+                    # Store combined data in content for history
+                    combined_content = {
+                        "data": data,
+                        "answer": tab_resp.answer,
+                    }
                     st.session_state.messages.append(
-                        {"role": "assistant", "type": "dataframe", "content": data}
+                        {
+                            "role": "assistant",
+                            "type": "dataframe",
+                            "content": combined_content,
+                            "full_data": full_results,
+                        }
                     )
                     db.save_message(
-                        st.session_state.thread_id, "assistant", data, "dataframe"
+                        st.session_state.thread_id,
+                        "assistant",
+                        combined_content,
+                        "dataframe",
                     )
 
                 # Fallback to Natural Language
@@ -415,9 +466,30 @@ if prompt:
                         )
 
                     answer = result["answer"]
+                    full_results = result.get("query_results")
                     st.markdown(answer)
+
+                    if full_results and len(full_results) > 5:
+                        csv = convert_to_csv(full_results)
+                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        user_email = st.session_state.get("user_email", "user").split(
+                            "@"
+                        )[0]
+                        st.download_button(
+                            label="Download Full Results (CSV)",
+                            data=csv,
+                            file_name=f"{user_email}_{timestamp}.csv",
+                            mime="text/csv",
+                            key=f"download_full_new_nl_{len(st.session_state.messages)}",
+                        )
+
                     st.session_state.messages.append(
-                        {"role": "assistant", "type": "text", "content": answer}
+                        {
+                            "role": "assistant",
+                            "type": "text",
+                            "content": answer,
+                            "full_data": full_results,
+                        }
                     )
                     db.save_message(
                         st.session_state.thread_id, "assistant", answer, "text"

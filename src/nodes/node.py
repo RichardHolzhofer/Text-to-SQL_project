@@ -13,6 +13,7 @@ from src.states.state import (
     Schema,
     SQLGenerator,
     Table,
+    TabularResponse,
     TextToSQLState,
     Validator,
 )
@@ -42,6 +43,7 @@ class TextToSQLNodes:
             self.standard_nl_limit = 100
             self.mart_schema_path = "olist/models/marts/_marts_schema.yml"
             self.enhancement_schema_path = "embeddings/_embeddings_schema.yml"
+            self.safety_limit = 5000
             logger.info("TextToSQLNodes initialized using Config LLMs and Supabase.")
         except Exception as e:
             logger.exception("Failed to initialize TextToSQLNodes.")
@@ -197,12 +199,6 @@ class TextToSQLNodes:
             # Serialize the schema so the LLM can read it
             schema_json = json.dumps(state.schema.model_dump(), indent=2)
 
-            semantic_limit = (
-                self.semantic_tab_limit
-                if state.router.route == "tab"
-                else self.semantic_nl_limit
-            )
-
             # Run structured generation for semantic search
             sql_generation_output = run_prompt(
                 prompt_name="generate_semantic_review_sql",
@@ -210,7 +206,6 @@ class TextToSQLNodes:
                     "schema_context": schema_json,
                     "question": state.question,
                     "threshold": self.semantic_search_threshold,
-                    "limit": semantic_limit,
                 },
                 config=self.config,
                 chat_history=state.chat_history,
@@ -256,19 +251,12 @@ class TextToSQLNodes:
             # Serialize the schema so the LLM can read it
             schema_json = json.dumps(state.schema.model_dump(), indent=2)
 
-            standard_limit = (
-                self.standard_tab_limit
-                if state.router.route == "tab"
-                else self.standard_nl_limit
-            )
-
             # Run structured generation
             sql_generation_output = run_prompt(
                 prompt_name="generate_sql",
                 variables={
                     "schema_context": schema_json,
                     "question": state.question,
-                    "limit": standard_limit,
                 },
                 config=self.config,
                 chat_history=state.chat_history,
@@ -396,8 +384,12 @@ class TextToSQLNodes:
             with self.config.get_snowflake_connection(write_access=False) as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(sql)
+                    # Fetch one more than safety limit to detect truncation
+                    rows = cursor.fetchmany(self.safety_limit + 1)
+                    is_capped = len(rows) > self.safety_limit
+                    # If capped, slice back to safety limit
                     results = process_snowflake_results(
-                        cursor.description, cursor.fetchall()
+                        cursor.description, rows[: self.safety_limit]
                     )
 
             if is_result_empty(results):
@@ -415,7 +407,7 @@ class TextToSQLNodes:
                 }
 
             logger.info(f"Execution successful. Fetched {len(results)} rows.")
-            return {"query_results": results}
+            return {"query_results": results, "is_capped": is_capped}
 
         except Exception as e:
             error_str = str(e)
@@ -437,14 +429,40 @@ class TextToSQLNodes:
 
     def generate_tabular_answer(self, state: TextToSQLState):
         """
-        Simply passes the query results to the tabular_answer state field.
+        Passes the query results to the tabular_answer state field, truncated to the display limit.
         """
         logger.info("Generating tabular answer...")
+        limit = (
+            self.semantic_tab_limit
+            if state.router and state.router.is_semantic_intent
+            else self.standard_tab_limit
+        )
+
+        total_count = len(state.query_results) if state.query_results else 0
+        truncated_results = state.query_results[:limit] if state.query_results else []
+        result_count = len(truncated_results)
+
+        # Generate a transparency disclaimer for tabular results
+        answer = "Here are the tabular results you requested."
+        if total_count > result_count:
+            answer = f"Showing the first {result_count} records out of {total_count} total matches found. The full dataset can be downloaded as a CSV below."
+
+        if state.is_capped:
+            sql_query = state.generated_sql.sql_query if state.generated_sql else "N/A"
+            answer += (
+                f"\n\n---\n**Note**: The full results exceeded our safety limit of {self.safety_limit} records. "
+                f"Please run the following query directly in your database to get all requested records:\n"
+                f"```sql\n{sql_query}\n```"
+            )
+
         return {
-            "tabular_answer": state.query_results,
-            "chat_history": [
-                AIMessage(content="Here are the tabular results you requested.")
-            ],
+            "tabular_answer": TabularResponse(
+                data=truncated_results,
+                answer=answer,
+                total_count=total_count,
+                is_capped=state.is_capped,
+            ),
+            "chat_history": [AIMessage(content=answer)],
         }
 
     def generate_nl_answer(self, state: TextToSQLState):
@@ -462,13 +480,18 @@ class TextToSQLNodes:
                     "chat_history": [AIMessage(content=explanation)],
                 }
 
+            limit = self.standard_nl_limit
+            total_count = len(state.query_results) if state.query_results else 0
+
+            truncated_results = (
+                state.query_results[:limit] if state.query_results else []
+            )
+            result_count = len(truncated_results)
+
             # Be mindful of result size. If it's too large, we might need to truncate.
-            results_str = json.dumps(state.query_results, indent=2, default=str)
+            results_str = json.dumps(truncated_results, indent=2, default=str)
             if len(results_str) > 50000:
                 results_str = results_str[:50000] + "\n... [TRUNCATED]"
-
-            result_count = len(state.query_results) if state.query_results else 0
-            limit_used = self.standard_nl_limit
 
             # Run NL generation
             response = run_prompt(
@@ -477,13 +500,23 @@ class TextToSQLNodes:
                     "question": state.question,
                     "sql_query_results": results_str,
                     "result_count": result_count,
-                    "limit_used": limit_used,
+                    "total_count": total_count,
                 },
                 config=self.config,
                 chat_history=state.chat_history,
                 use_fast_llm=True,
             )
             answer = response.content.strip()
+
+            if state.is_capped:
+                sql_query = (
+                    state.generated_sql.sql_query if state.generated_sql else "N/A"
+                )
+                answer += (
+                    f"\n\n---\n**Note**: The full results exceeded our safety limit of {self.safety_limit} records. "
+                    f"Please run the following query directly in your database to get all requested records:\n"
+                    f"```sql\n{sql_query}\n```"
+                )
 
             return {"answer": answer, "chat_history": [AIMessage(content=answer)]}
 
@@ -506,12 +539,17 @@ class TextToSQLNodes:
                     "chat_history": [AIMessage(content=explanation)],
                 }
 
-            results_str = json.dumps(state.query_results, indent=2, default=str)
+            limit = self.semantic_nl_limit
+            total_count = len(state.query_results) if state.query_results else 0
+
+            truncated_results = (
+                state.query_results[:limit] if state.query_results else []
+            )
+            result_count = len(truncated_results)
+
+            results_str = json.dumps(truncated_results, indent=2, default=str)
             if len(results_str) > 50000:
                 results_str = results_str[:50000] + "\n... [TRUNCATED]"
-
-            result_count = len(state.query_results) if state.query_results else 0
-            limit_used = self.semantic_nl_limit
 
             # Run NL generation
             response = run_prompt(
@@ -520,13 +558,23 @@ class TextToSQLNodes:
                     "question": state.question,
                     "sql_query_results": results_str,
                     "result_count": result_count,
-                    "limit_used": limit_used,
+                    "total_count": total_count,
                 },
                 config=self.config,
                 chat_history=state.chat_history,
                 use_fast_llm=False,  # Use smart LLM for better thematic grouping
             )
             answer = response.content.strip()
+
+            if state.is_capped:
+                sql_query = (
+                    state.generated_sql.sql_query if state.generated_sql else "N/A"
+                )
+                answer += (
+                    f"\n\n---\n**Note**: The full results exceeded our safety limit of {self.safety_limit} records. "
+                    f"Please run the following query directly in your database to get all requested records:\n"
+                    f"```sql\n{sql_query}\n```"
+                )
 
             return {"answer": answer, "chat_history": [AIMessage(content=answer)]}
 
