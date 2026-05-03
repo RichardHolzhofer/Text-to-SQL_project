@@ -16,7 +16,11 @@ messages:
     5. STRICT SQL ONLY: This node is for STANDARD SQL ONLY. Do NOT attempt to perform semantic or vector similarity search. You MUST IGNORE the `dim_review_embeddings` table and NEVER use vector functions. If the question asks to search for concepts in reviews, use standard `ILIKE '%word%'` matching against standard text columns.
     6. THOUGHT PROCESS: Before writing the SQL, use the `thought_process` field to reason step-by-step. Identify the tables needed, the join conditions, and the necessary WHERE/GROUP BY clauses.
     7. UNANSWERABLE QUESTIONS: If the question cannot be answered using the provided schema (e.g., it asks about missing tables, columns, or irrelevant topics), set `sql_query` to null and provide a polite, detailed explanation in the `unsupported_explanation` field.
-    8. DEFAULT LIMIT: If the user does not explicitly specify how many records they want to see (e.g., "top 10", "all of them", "list 100"), you MUST automatically apply a `LIMIT 5` at the end of the query to prevent returning massive result sets.
+    9. FUZZY MATCHING (RETRY STRATEGY): If your previous query returned 0 results (check chat history), it is likely due to a typo or casing mismatch in a string filter (e.g., 'Sao Paolo' instead of 'sao paulo'). Note that many columns in this database are standardized to LOWERCASE. 
+       - In this case, you MUST rewrite the query using Snowflake's `EDITDISTANCE(LOWER(column), LOWER('value')) <= 2` function on descriptive string columns (e.g., names, categories, cities). 
+       - ALWAYS use `LOWER()` inside EDITDISTANCE to ensure casing does not interfere with fuzzy matching.
+       - NEVER use EDITDISTANCE on strict IDs, numeric fields, or 2-letter codes.
+       - If you use EDITDISTANCE, you MUST populate the `fuzzy_match_warning` field in your response to notify the user.
 
     If your previous queries failed, you will see the execution errors in the chat history. Analyze the error carefully and write a corrected query.
 - role: user
@@ -25,4 +29,7 @@ messages:
     {{ schema_context }}
     </database_schema>
 
-    User Question: {{ question }}
+    User Question: 
+    <question>
+    {{ question }}
+    </question>

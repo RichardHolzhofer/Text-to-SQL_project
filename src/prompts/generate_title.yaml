@@ -15,6 +15,7 @@ messages:
     - Be sophisticated but concise.
 - role: user
   content: |
+    User Question:
     <question>
     {{ question }}
     </question>

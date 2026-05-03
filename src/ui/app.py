@@ -349,6 +349,27 @@ if prompt:
                     and result.get("router").route == "tab"
                     and result.get("tabular_answer") is not None
                 ):
+                    # Display fuzzy match warning if present
+                    if (
+                        result.get("generated_sql")
+                        and result["generated_sql"].fuzzy_match_warning
+                    ):
+                        warning_msg = result["generated_sql"].fuzzy_match_warning
+                        st.warning(warning_msg)
+                        st.session_state.messages.append(
+                            {
+                                "role": "assistant",
+                                "type": "warning",
+                                "content": warning_msg,
+                            }
+                        )
+                        db.save_message(
+                            st.session_state.thread_id,
+                            "assistant",
+                            warning_msg,
+                            "warning",
+                        )
+
                     data = result["tabular_answer"]
                     df = pd.DataFrame(data)
                     st.dataframe(df)
@@ -372,6 +393,27 @@ if prompt:
 
                 # Fallback to Natural Language
                 elif result.get("answer"):
+                    # Display fuzzy match warning if present
+                    if (
+                        result.get("generated_sql")
+                        and result["generated_sql"].fuzzy_match_warning
+                    ):
+                        warning_msg = result["generated_sql"].fuzzy_match_warning
+                        st.warning(warning_msg)
+                        st.session_state.messages.append(
+                            {
+                                "role": "assistant",
+                                "type": "warning",
+                                "content": warning_msg,
+                            }
+                        )
+                        db.save_message(
+                            st.session_state.thread_id,
+                            "assistant",
+                            warning_msg,
+                            "warning",
+                        )
+
                     answer = result["answer"]
                     st.markdown(answer)
                     st.session_state.messages.append(
@@ -398,3 +440,6 @@ if prompt:
                 st.session_state.messages.append(
                     {"role": "assistant", "type": "warning", "content": error_msg}
                 )
+            finally:
+                # Ensure all traces are flushed to Langfuse before Streamlit exits or reruns
+                config.get_langfuse().flush()

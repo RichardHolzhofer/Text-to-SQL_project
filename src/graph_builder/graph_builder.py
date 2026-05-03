@@ -27,25 +27,25 @@ class TextToSQLGraph:
 
     def _route_after_intent(self, state: TextToSQLState):
         if state.router and state.router.is_review_query:
-            return "review"
+            return "semantic"
         return "general"
 
-    def _route_after_review_intent(self, state: TextToSQLState):
-        if state.router and state.router.use_semantic_search:
-            return "semantic"
-        return "standard"
+    def _route_after_validator(self, state: TextToSQLState):
+        if state.validator and not state.validator.is_valid_query:
+            iteration = state.validator.iteration_count
+            if iteration < self.nodes.max_retry:
+                if state.router and state.router.is_review_query and iteration >= 2:
+                    return "semantic_generator"
+                return "standard_generator"
+        return "execute"
 
-    def _route_format(self, state: TextToSQLState):
-        # Check for fallback: 0 results on standard review query
-        if (
-            state.router
-            and state.router.is_review_query
-            and state.query_results is not None
-            and len(state.query_results) == 0
-            and not state.router.is_fallback
-            and not state.router.use_semantic_search
-        ):
-            return "fallback"
+    def _route_after_execute(self, state: TextToSQLState):
+        if state.validator and not state.validator.is_valid_query:
+            iteration = state.validator.iteration_count
+            if iteration < self.nodes.max_retry:
+                if state.router and state.router.is_review_query and iteration >= 2:
+                    return "semantic_generator"
+                return "standard_generator"
 
         if state.router and state.router.route == "tab":
             return "tabular"
@@ -58,9 +58,11 @@ class TextToSQLGraph:
         # Nodes
         workflow.add_node("schema_builder_node", self.nodes.build_schema)
         workflow.add_node("router_query_node", self.nodes.route_format)
-        workflow.add_node("review_intent_node", self.nodes.review_intent_node)
-        workflow.add_node("review_search_node", self.nodes.review_search_node)
         workflow.add_node("query_generator_node", self.nodes.generate_sql)
+
+        workflow.add_node(
+            "semantic_query_generator_node", self.nodes.semantic_query_generator
+        )
         workflow.add_node("validator_node", self.nodes.validate_sql)
         workflow.add_node("query_executer_node", self.nodes.execute_sql)
         workflow.add_node(
@@ -76,30 +78,30 @@ class TextToSQLGraph:
             "router_query_node",
             self._route_after_intent,
             {
-                "review": "review_intent_node",
+                "semantic": "semantic_query_generator_node",
                 "general": "query_generator_node",
             },
         )
 
+        workflow.add_edge("query_generator_node", "validator_node")
+        workflow.add_edge("semantic_query_generator_node", "validator_node")
+
         workflow.add_conditional_edges(
-            "review_intent_node",
-            self._route_after_review_intent,
+            "validator_node",
+            self._route_after_validator,
             {
-                "semantic": "review_search_node",
-                "standard": "query_generator_node",
+                "standard_generator": "query_generator_node",
+                "semantic_generator": "semantic_query_generator_node",
+                "execute": "query_executer_node",
             },
         )
 
-        workflow.add_edge("review_search_node", "validator_node")
-        workflow.add_edge("query_generator_node", "validator_node")
-        workflow.add_edge("validator_node", "query_executer_node")
-
-        # Routing to display format or fallback
         workflow.add_conditional_edges(
             "query_executer_node",
-            self._route_format,
+            self._route_after_execute,
             {
-                "fallback": "review_intent_node",
+                "standard_generator": "query_generator_node",
+                "semantic_generator": "semantic_query_generator_node",
                 "tabular": "generate_tabular_answer_node",
                 "nl": "generate_nl_answer_node",
             },

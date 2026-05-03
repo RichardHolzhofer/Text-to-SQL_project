@@ -61,6 +61,7 @@ class Config:
         # LLM Model settings
         self.smart_model = os.getenv("SMART_LLM_MODEL")
         self.fast_model = os.getenv("FAST_LLM_MODEL")
+        self.temperature = float(os.getenv("LLM_TEMPERATURE", 0.0))
 
         # Validation (Optional)
         self._validate_config()
@@ -180,15 +181,23 @@ class Config:
     def get_smart_llm(self):
         """Returns a cached instance of the smart LLM."""
         if not hasattr(self, "_smart_llm") or self._smart_llm is None:
-            self.logger.info(f"Initializing Smart LLM: {self.smart_model}")
-            self._smart_llm = init_chat_model(self.smart_model)
+            self.logger.info(
+                f"Initializing Smart LLM: {self.smart_model} with temperature={self.temperature}"
+            )
+            self._smart_llm = init_chat_model(
+                self.smart_model, temperature=self.temperature
+            )
         return self._smart_llm
 
     def get_fast_llm(self):
         """Returns a cached instance of the fast LLM."""
         if not hasattr(self, "_fast_llm") or self._fast_llm is None:
-            self.logger.info(f"Initializing Fast LLM: {self.fast_model}")
-            self._fast_llm = init_chat_model(self.fast_model)
+            self.logger.info(
+                f"Initializing Fast LLM: {self.fast_model} with temperature={self.temperature}"
+            )
+            self._fast_llm = init_chat_model(
+                self.fast_model, temperature=self.temperature
+            )
         return self._fast_llm
 
     def get_llm(self, model_name: str):

@@ -21,6 +21,7 @@ messages:
        - Set to false for standard analytical questions (e.g., "how many 5-star reviews?", "who wrote the longest review?").
 - role: user
   content: |
+    User Question:
     <question>
     {{ question }}
     </question>
