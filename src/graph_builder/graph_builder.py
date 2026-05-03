@@ -1,3 +1,5 @@
+import os
+
 from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.graph import END, StateGraph
 from psycopg_pool import ConnectionPool
@@ -23,6 +25,32 @@ class TextToSQLGraph:
         # Ensure the checkpoint tables exist in Supabase
         self.memory.setup()
 
+    def _route_after_intent(self, state: TextToSQLState):
+        if state.router and state.router.is_review_query:
+            return "review"
+        return "general"
+
+    def _route_after_review_intent(self, state: TextToSQLState):
+        if state.router and state.router.use_semantic_search:
+            return "semantic"
+        return "standard"
+
+    def _route_format(self, state: TextToSQLState):
+        # Check for fallback: 0 results on standard review query
+        if (
+            state.router
+            and state.router.is_review_query
+            and state.query_results is not None
+            and len(state.query_results) == 0
+            and not state.router.is_fallback
+            and not state.router.use_semantic_search
+        ):
+            return "fallback"
+
+        if state.router and state.router.route == "tab":
+            return "tabular"
+        return "nl"
+
     def build_graph(self):
         # Define the StateGraph with the state schema
         workflow = StateGraph(TextToSQLState)
@@ -44,28 +72,18 @@ class TextToSQLGraph:
         workflow.set_entry_point("schema_builder_node")
         workflow.add_edge("schema_builder_node", "router_query_node")
 
-        def after_router(state: TextToSQLState):
-            if state.router and state.router.is_review_query:
-                return "review"
-            return "general"
-
         workflow.add_conditional_edges(
             "router_query_node",
-            after_router,
+            self._route_after_intent,
             {
                 "review": "review_intent_node",
                 "general": "query_generator_node",
             },
         )
 
-        def after_review_intent(state: TextToSQLState):
-            if state.router and state.router.use_semantic_search:
-                return "semantic"
-            return "standard"
-
         workflow.add_conditional_edges(
             "review_intent_node",
-            after_review_intent,
+            self._route_after_review_intent,
             {
                 "semantic": "review_search_node",
                 "standard": "query_generator_node",
@@ -77,25 +95,9 @@ class TextToSQLGraph:
         workflow.add_edge("validator_node", "query_executer_node")
 
         # Routing to display format or fallback
-        def format_router(state: TextToSQLState):
-            # Check for fallback: 0 results on standard review query
-            if (
-                state.router
-                and state.router.is_review_query
-                and state.query_results is not None
-                and len(state.query_results) == 0
-                and not state.router.is_fallback
-                and not state.router.use_semantic_search
-            ):
-                return "fallback"
-
-            if state.router and state.router.route == "tab":
-                return "tabular"
-            return "nl"
-
         workflow.add_conditional_edges(
             "query_executer_node",
-            format_router,
+            self._route_format,
             {
                 "fallback": "review_intent_node",
                 "tabular": "generate_tabular_answer_node",
@@ -110,3 +112,15 @@ class TextToSQLGraph:
         self.graph = workflow.compile(checkpointer=self.memory)
 
         return self.graph
+
+
+if __name__ == "__main__":
+    graph = TextToSQLGraph()
+
+    compiled_graph = graph.build_graph()
+
+    graph_image = compiled_graph.get_graph().draw_mermaid_png()
+
+    os.makedirs("./graph_image", exist_ok=True)
+    with open("./graph_image/graph_image.png", "wb") as f:
+        f.write(graph_image)

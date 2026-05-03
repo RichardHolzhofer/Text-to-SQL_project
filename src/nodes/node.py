@@ -208,6 +208,7 @@ class TextToSQLNodes:
         if router.is_fallback:
             use_semantic = True
 
+        # Use model_copy to create a new version of the router with updated fields (maintains immutability)
         updated_router = router.model_copy(
             update={"use_semantic_search": use_semantic, "is_fallback": is_fallback_now}
         )
