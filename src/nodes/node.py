@@ -16,8 +16,9 @@ from src.states.state import (
     TextToSQLState,
     Validator,
 )
+from src.utils.db_utils import is_result_empty, process_snowflake_results
 from src.utils.llm_utils import run_prompt
-from src.utils.utils import dump_yaml, load_yaml
+from src.utils.utils import clean_sql_query, dump_yaml, load_yaml
 
 
 class TextToSQLNodes:
@@ -35,6 +36,10 @@ class TextToSQLNodes:
             self.db = SupabaseDB(config, admin=True)
             self.max_retry = 3
             self.semantic_search_threshold = 0.85
+            self.semantic_tab_limit = 10
+            self.semantic_nl_limit = 100
+            self.standard_tab_limit = 10
+            self.standard_nl_limit = 100
             self.mart_schema_path = "olist/models/marts/_marts_schema.yml"
             self.enhancement_schema_path = "embeddings/_embeddings_schema.yml"
             logger.info("TextToSQLNodes initialized using Config LLMs and Supabase.")
@@ -192,13 +197,20 @@ class TextToSQLNodes:
             # Serialize the schema so the LLM can read it
             schema_json = json.dumps(state.schema.model_dump(), indent=2)
 
+            semantic_limit = (
+                self.semantic_tab_limit
+                if state.router.route == "tab"
+                else self.semantic_nl_limit
+            )
+
             # Run structured generation for semantic search
-            generated = run_prompt(
+            sql_generation_output = run_prompt(
                 prompt_name="generate_semantic_review_sql",
                 variables={
                     "schema_context": schema_json,
                     "question": state.question,
                     "threshold": self.semantic_search_threshold,
+                    "limit": semantic_limit,
                 },
                 config=self.config,
                 chat_history=state.chat_history,
@@ -206,26 +218,30 @@ class TextToSQLNodes:
             )
 
             logger.info("Semantic SQL generation successful.")
-            if generated.thought_process:
+            if sql_generation_output.thought_process:
                 logger.info(
-                    f"Thought Process snippet: {generated.thought_process[:100]}..."
+                    f"Thought Process snippet: {sql_generation_output.thought_process[:100]}..."
                 )
 
             chat_update = []
-            if generated.sql_query:
+            if sql_generation_output.sql_query:
                 chat_update = [
                     AIMessage(
-                        content=f"Generated Semantic SQL:\n```sql\n{generated.sql_query}\n```"
+                        content=f"Generated Semantic SQL:\n```sql\n{sql_generation_output.sql_query}\n```"
                     )
                 ]
-            elif generated.unsupported_explanation:
-                chat_update = [AIMessage(content=generated.unsupported_explanation)]
+            elif sql_generation_output.unsupported_explanation:
+                chat_update = [
+                    AIMessage(content=sql_generation_output.unsupported_explanation)
+                ]
 
             # Ensure we reset the fuzzy warning if the new generation didn't provide one
-            if not generated.fuzzy_match_warning:
-                generated.fuzzy_match_warning = None
+            if not sql_generation_output.fuzzy_match_warning:
+                sql_generation_output = sql_generation_output.model_copy(
+                    update={"fuzzy_match_warning": None}
+                )
 
-            return {"generated_sql": generated, "chat_history": chat_update}
+            return {"generated_sql": sql_generation_output, "chat_history": chat_update}
 
         except Exception as e:
             logger.exception("Failed to create Semantic SQL query.")
@@ -240,10 +256,20 @@ class TextToSQLNodes:
             # Serialize the schema so the LLM can read it
             schema_json = json.dumps(state.schema.model_dump(), indent=2)
 
+            standard_limit = (
+                self.standard_tab_limit
+                if state.router.route == "tab"
+                else self.standard_nl_limit
+            )
+
             # Run structured generation
-            generated = run_prompt(
+            sql_generation_output = run_prompt(
                 prompt_name="generate_sql",
-                variables={"schema_context": schema_json, "question": state.question},
+                variables={
+                    "schema_context": schema_json,
+                    "question": state.question,
+                    "limit": standard_limit,
+                },
                 config=self.config,
                 chat_history=state.chat_history,
                 output_schema=SQLGenerator,
@@ -251,24 +277,28 @@ class TextToSQLNodes:
 
             logger.info("SQL generation successful.")
             logger.info(
-                f"Thought Process snippet: {generated.thought_process[:100]}..."
+                f"Thought Process snippet: {sql_generation_output.thought_process[:100]}..."
             )
 
             chat_update = []
-            if generated.sql_query:
+            if sql_generation_output.sql_query:
                 chat_update = [
                     AIMessage(
-                        content=f"Generated SQL:\n```sql\n{generated.sql_query}\n```"
+                        content=f"Generated SQL:\n```sql\n{sql_generation_output.sql_query}\n```"
                     )
                 ]
-            elif generated.unsupported_explanation:
-                chat_update = [AIMessage(content=generated.unsupported_explanation)]
+            elif sql_generation_output.unsupported_explanation:
+                chat_update = [
+                    AIMessage(content=sql_generation_output.unsupported_explanation)
+                ]
 
             # Ensure we reset the fuzzy warning if the new generation didn't provide one
-            if not generated.fuzzy_match_warning:
-                generated.fuzzy_match_warning = None
+            if not sql_generation_output.fuzzy_match_warning:
+                sql_generation_output = sql_generation_output.model_copy(
+                    update={"fuzzy_match_warning": None}
+                )
 
-            return {"generated_sql": generated, "chat_history": chat_update}
+            return {"generated_sql": sql_generation_output, "chat_history": chat_update}
 
         except Exception as e:
             logger.exception("Failed to create SQL query.")
@@ -284,29 +314,26 @@ class TextToSQLNodes:
                 raise ValueError("No SQL generated to validate.")
 
             sql = state.generated_sql.sql_query
+            cleaned_sql = clean_sql_query(sql)
 
-            # Clean up LLM formatting artifacts (literal \n, markdown blocks)
-            if sql:
-                sql = sql.replace("\\n", "\n").replace("\\t", " ")
-                if "```sql" in sql:
-                    sql = sql.split("```sql")[1].split("```")[0]
-                elif "```" in sql:
-                    sql = sql.split("```")[1].split("```")[0]
-                sql = sql.strip()
-                # Mutate the state so downstream nodes get the cleaned version
-                state.generated_sql.sql_query = sql
+            # Update the SQL in our generated_sql update object
+            generated_sql_update = state.generated_sql.model_copy(
+                update={"sql_query": cleaned_sql}
+            )
 
             # If the model explicitly said it can't answer, don't run EXPLAIN and mark as invalid
-            if not sql:
+            if not cleaned_sql:
                 logger.info(
                     "No SQL generated (unsupported question). Skipping EXPLAIN validation."
                 )
                 return {
-                    "validator": Validator(
-                        is_valid_query=True,  # Mark as valid so we don't retry, but execute will skip
-                        error_message=None,
-                        iteration_count=state.validator.iteration_count,
-                    )
+                    "generated_sql": generated_sql_update,
+                    "validator": state.validator.model_copy(
+                        update={
+                            "is_valid_query": True,  # Mark as valid so we don't retry, but execute will skip
+                            "error_message": None,
+                        }
+                    ),
                 }
 
             logger.info(
@@ -316,25 +343,29 @@ class TextToSQLNodes:
             # Execute EXPLAIN in Snowflake
             with self.config.get_snowflake_connection(write_access=False) as conn:
                 with conn.cursor() as cursor:
-                    cursor.execute(f"EXPLAIN {sql}")
+                    cursor.execute(f"EXPLAIN {cleaned_sql}")
 
             logger.info("SQL validation successful.")
             return {
-                "validator": Validator(
-                    is_valid_query=True,
-                    error_message=None,
-                    iteration_count=state.validator.iteration_count,
-                )
+                "generated_sql": generated_sql_update,
+                "validator": state.validator.model_copy(
+                    update={
+                        "is_valid_query": True,
+                        "error_message": None,
+                    }
+                ),
             }
 
         except Exception as e:
             error_str = str(e)
             logger.warning(f"SQL validation failed: {error_str}")
             return {
-                "validator": Validator(
-                    is_valid_query=False,
-                    error_message=error_str,
-                    iteration_count=state.validator.iteration_count + 1,
+                "validator": state.validator.model_copy(
+                    update={
+                        "is_valid_query": False,
+                        "error_message": error_str,
+                        "iteration_count": state.validator.iteration_count + 1,
+                    }
                 ),
                 "chat_history": [
                     SystemMessage(
@@ -362,46 +393,23 @@ class TextToSQLNodes:
             sql = state.generated_sql.sql_query
             logger.info("Executing SQL query in Snowflake...")
 
-            results = []
             with self.config.get_snowflake_connection(write_access=False) as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(sql)
-                    if cursor.description:
-                        columns = [col[0] for col in cursor.description]
-                        rows = cursor.fetchall()
-                        for row in rows:
-                            # Convert Decimals to float/int for JSON serialization
-                            processed_row = {}
-                            for k, v in zip(columns, row):
-                                if (
-                                    hasattr(v, "__class__")
-                                    and v.__class__.__name__ == "Decimal"
-                                ):
-                                    processed_row[k] = (
-                                        float(v) if "." in str(v) else int(v)
-                                    )
-                                else:
-                                    processed_row[k] = v
-                            results.append(processed_row)
+                    results = process_snowflake_results(
+                        cursor.description, cursor.fetchall()
+                    )
 
-            is_empty = False
-            if len(results) == 0:
-                is_empty = True
-            elif len(results) == 1:
-                row = results[0]
-                values = list(row.values())
-                # Treat a single row with only 0 or None as "empty" (common for COUNT/SUM with no underlying data)
-                if all(v in (0, 0.0, None) for v in values):
-                    is_empty = True
-
-            if is_empty:
+            if is_result_empty(results):
                 error_str = "Query executed successfully but returned 0 results."
                 logger.warning(error_str)
                 return {
-                    "validator": Validator(
-                        is_valid_query=False,
-                        error_message=error_str,
-                        iteration_count=state.validator.iteration_count + 1,
+                    "validator": state.validator.model_copy(
+                        update={
+                            "is_valid_query": False,
+                            "error_message": error_str,
+                            "iteration_count": state.validator.iteration_count + 1,
+                        }
                     ),
                     "chat_history": [SystemMessage(content=error_str)],
                 }
@@ -413,10 +421,12 @@ class TextToSQLNodes:
             error_str = str(e)
             logger.warning(f"SQL execution failed: {error_str}")
             return {
-                "validator": Validator(
-                    is_valid_query=False,
-                    error_message=error_str,
-                    iteration_count=state.validator.iteration_count + 1,
+                "validator": state.validator.model_copy(
+                    update={
+                        "is_valid_query": False,
+                        "error_message": error_str,
+                        "iteration_count": state.validator.iteration_count + 1,
+                    }
                 ),
                 "chat_history": [
                     SystemMessage(
@@ -457,12 +467,17 @@ class TextToSQLNodes:
             if len(results_str) > 50000:
                 results_str = results_str[:50000] + "\n... [TRUNCATED]"
 
+            result_count = len(state.query_results) if state.query_results else 0
+            limit_used = self.standard_nl_limit
+
             # Run NL generation
             response = run_prompt(
                 prompt_name="generate_nl_answer",
                 variables={
                     "question": state.question,
                     "sql_query_results": results_str,
+                    "result_count": result_count,
+                    "limit_used": limit_used,
                 },
                 config=self.config,
                 chat_history=state.chat_history,
@@ -475,3 +490,46 @@ class TextToSQLNodes:
         except Exception as e:
             logger.exception("Failed to generate natural language answer.")
             raise NodeException(f"Failed to generate NL answer: {e}")
+
+    def summarize_review_sentiment(self, state: TextToSQLState):
+        """
+        Uses an LLM to generate a specialized natural language summary of review sentiments.
+        """
+        try:
+            logger.info("Generating review sentiment summary...")
+
+            # If the query was unsupported, just return the explanation as the answer
+            if state.generated_sql and state.generated_sql.unsupported_explanation:
+                explanation = state.generated_sql.unsupported_explanation
+                return {
+                    "answer": explanation,
+                    "chat_history": [AIMessage(content=explanation)],
+                }
+
+            results_str = json.dumps(state.query_results, indent=2, default=str)
+            if len(results_str) > 50000:
+                results_str = results_str[:50000] + "\n... [TRUNCATED]"
+
+            result_count = len(state.query_results) if state.query_results else 0
+            limit_used = self.semantic_nl_limit
+
+            # Run NL generation
+            response = run_prompt(
+                prompt_name="summarize_review_sentiment",
+                variables={
+                    "question": state.question,
+                    "sql_query_results": results_str,
+                    "result_count": result_count,
+                    "limit_used": limit_used,
+                },
+                config=self.config,
+                chat_history=state.chat_history,
+                use_fast_llm=False,  # Use smart LLM for better thematic grouping
+            )
+            answer = response.content.strip()
+
+            return {"answer": answer, "chat_history": [AIMessage(content=answer)]}
+
+        except Exception as e:
+            logger.exception("Failed to generate review sentiment summary.")
+            raise NodeException(f"Failed to generate review summary: {e}")

@@ -47,6 +47,14 @@ class TextToSQLGraph:
                     return "semantic_generator"
                 return "standard_generator"
 
+        if (
+            state.router
+            and state.router.is_review_query
+            and state.router.route == "nl"
+            and state.router.is_semantic_intent
+        ):
+            return "review_nl"
+
         if state.router and state.router.route == "tab":
             return "tabular"
         return "nl"
@@ -69,6 +77,9 @@ class TextToSQLGraph:
             "generate_tabular_answer_node", self.nodes.generate_tabular_answer
         )
         workflow.add_node("generate_nl_answer_node", self.nodes.generate_nl_answer)
+        workflow.add_node(
+            "summarize_review_sentiment_node", self.nodes.summarize_review_sentiment
+        )
 
         # Edges
         workflow.set_entry_point("schema_builder_node")
@@ -104,11 +115,13 @@ class TextToSQLGraph:
                 "semantic_generator": "semantic_query_generator_node",
                 "tabular": "generate_tabular_answer_node",
                 "nl": "generate_nl_answer_node",
+                "review_nl": "summarize_review_sentiment_node",
             },
         )
 
         workflow.add_edge("generate_tabular_answer_node", END)
         workflow.add_edge("generate_nl_answer_node", END)
+        workflow.add_edge("summarize_review_sentiment_node", END)
 
         # Compile and add checkpointer for memory
         self.graph = workflow.compile(checkpointer=self.memory)

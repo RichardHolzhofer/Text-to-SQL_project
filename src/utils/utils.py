@@ -83,3 +83,23 @@ def get_prompt_template(prompt_name: str, config=None):
     template.metadata = {"config": data}
 
     return template
+
+
+def clean_sql_query(sql: str | None) -> str | None:
+    """
+    Cleans up common LLM formatting artifacts from generated SQL strings,
+    including literal newlines, tabs, and markdown code blocks.
+    """
+    if not sql:
+        return sql
+
+    # Replace literal escape sequences if they survived JSON parsing
+    sql = sql.replace("\\n", "\n").replace("\\t", " ")
+
+    # Strip markdown code blocks
+    if "```sql" in sql:
+        sql = sql.split("```sql")[1].split("```")[0]
+    elif "```" in sql:
+        sql = sql.split("```")[1].split("```")[0]
+
+    return sql.strip()

@@ -9,6 +9,19 @@ messages:
 
     Do not mention the SQL query itself or the database schema. Just answer the question directly.
     If the query results are empty, inform the user that no data was found for their request.
+
+    MANDATORY TRANSPARENCY DISCLAIMER:
+    If the `Result Count` is equal to or greater than the `System Limit`, you MUST start your response with the following exact phrase: 
+    "Based on the first {{ result_count }} records found matching your criteria..."
+    
+    This is non-negotiable and must be the very first sentence of your response.
+
+    Do NOT show a disclaimer for aggregate results (like a single row with an average or sum).
+
+    FORMATTING:
+    - Use clear, professional language.
+    - Use bullet points if listing multiple items.
+    - Keep the answer concise but comprehensive.
 - role: user
   content: |
     User Question:
@@ -20,3 +33,14 @@ messages:
     <sql_query_results>
     {{ sql_query_results }}
     </sql_query_results>
+
+    Result Metadata:
+    - Result Count:
+    <result_count>
+    {{ result_count }}
+    </result_count>
+
+    - System Limit:
+    <limit_used>
+    {{ limit_used }}
+    </limit_used>
