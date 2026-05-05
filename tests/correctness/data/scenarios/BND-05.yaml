@@ -1,0 +1,8 @@
+id: BND-05
+category: Boundaries
+input: Give me a table of all reviews that mention 'delivery'.
+ground_truth_sql: ''
+expected_output: '[Paste your perfect output for BND-05 here]'
+metadata:
+  limit_type: semantic_tab_limit
+  intent: semantic_tab

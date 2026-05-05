@@ -1,0 +1,103 @@
+[
+    {
+        "input": "Summarize the customer distribution across different Brazilian states.",
+        "actual_output": null,
+        "expected_output": "São Paulo (SP) - 40296 customers, 41.93% \nRio de Janeiro (RJ) - 12381 customers, 12.88% \nMinas Gerais (MG) - 11252 customers, 11.71%\nRio Grande do Sul (RS) - 5276 customers, 5.49%  \nParaná (PR) - 4879 customers, 5.08%\n\nThese five states account for roughly 77 % of all customers.  \nThe remaining 22 states together hold the remaining 23 %.\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": null,
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "id": "NL-01",
+            "category": "Standard NL",
+            "ground_truth_sql": "SELECT\n  c.customer_state AS state,\n  COUNT(*) AS customer_count,\n  ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER (), 2) AS percentage_of_total\nFROM dim_customers c\nGROUP BY c.customer_state\nORDER BY customer_count DESC;\n",
+            "limit_type": "standard_nl_limit",
+            "intent": "nl"
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "Explain the difference in average order value between new and returning customers.",
+        "actual_output": null,
+        "expected_output": "The data show that new customers spend more on average per order than returning customers.\n\nAverage order value for new customers: $159.31  \nAverage order value for returning customers: $145.82  \nDifference: New customers' orders are on average $13.48 higher than those of returning customers.\n\nThis suggests that when customers first make a purchase, they tend to order more (or higher-priced items) than they do in subsequent visits. It could reflect a higher initial order size, a promotional incentive for first-time buyers, or a difference in product mix between first-time and repeat purchases.\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": null,
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "id": "NL-02",
+            "category": "Standard NL",
+            "ground_truth_sql": "SELECT \nAVG(CASE WHEN dc.is_returning_customer = 1 THEN dc.average_order_value END) AS returning_customers_avg_order_value,\nAVG(CASE WHEN dc.is_returning_customer = 0 THEN dc.average_order_value END) AS new_customers_avg_order_value,\nAVG(CASE WHEN dc.is_returning_customer = 1 THEN dc.average_order_value END) -\nAVG(CASE WHEN dc.is_returning_customer = 0 THEN dc.average_order_value END) AS difference_in_avg_order_value\nFROM dim_customers dc;\n",
+            "limit_type": "standard_nl_limit",
+            "intent": "nl"
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "Provide a summary of revenue trends for the first quarter of 2018.",
+        "actual_output": null,
+        "expected_output": "January 2018: Revenue of $1,102,639.41 from 7,187 orders (average order value $153.42).  \nFebruary 2018: Revenue fell to $979,966.23 from 6,625 orders (average order value $147.92).  \nMarch 2018: Revenue rebounded to $1,152,736.74 from 7,168 orders (average order value $160.82).  \n\nTrend summary  \nRevenue, order count and average order value dipped in February but recovered strongly in March, with the highest monthly revenue in the quarter.\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": null,
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "id": "NL-03",
+            "category": "Standard NL",
+            "ground_truth_sql": "SELECT DATE_TRUNC('month', o.order_purchase_timestamp) AS month,\nSUM(o.total_order_value) AS total_revenue,\nCOUNT(*) AS order_count,\nAVG(o.total_order_value) AS avg_order_value\nFROM fct_orders AS o\nWHERE o.is_valid_order = 1\nAND o.order_purchase_timestamp >= DATE '2018-01-01'\nAND o.order_purchase_timestamp < DATE '2018-04-01'\nGROUP BY month\nORDER BY month;\n",
+            "limit_type": "standard_nl_limit",
+            "intent": "nl"
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "Compare the delivery performance and delay metrics between 'SP' and 'RJ' states.",
+        "actual_output": null,
+        "expected_output": "On-time delivery performance\nSP: 92.66% of orders were delivered on time.  \nRJ: 84.16% of orders were delivered on time.  \nSP outperforms RJ by about 8.5 percentage points.\n\nAverage delay  \nSP: 0.37 days delayed on average.  \nRJ: 1.59 days delayed on average.  \nSP experiences roughly 1.2 days less delay than RJ.\n\nDelivery time  \nSP: Average actual delivery time is 8.70 days, with an estimated time of 19.82 days.  \nRJ: Average actual delivery time is 15.24 days, with an estimated time of 27.00 days.  \nSP's deliveries are both faster and closer to the estimated schedule than RJ's.\n\nSummary\nSP shows stronger delivery performance, with higher on-time rates, shorter delays, and quicker fulfillment compared to RJ.\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": null,
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "id": "NL-04",
+            "category": "Standard NL",
+            "ground_truth_sql": "SELECT\nLOWER(o.customer_state) AS state,\nCOUNT(*) AS total_orders,\nSUM(o.is_delivered_on_time) AS on_time_deliveries,\nAVG(o.is_delivered_on_time) * 100 AS on_time_percentage,\nAVG(o.days_delayed) AS avg_days_delayed,\nAVG(o.actual_delivery_time_days) AS avg_actual_delivery_days,\nAVG(o.estimated_delivery_time_days) AS avg_estimated_delivery_days\nFROM fct_orders AS o\nWHERE LOWER(o.customer_state) IN ('sp', 'rj')\nAND o.is_valid_order = 1\nGROUP BY LOWER(o.customer_state)\nORDER BY state;\n",
+            "limit_type": "standard_nl_limit",
+            "intent": "nl"
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "Summarize the top-performing product categories in terms of total sales volume.",
+        "actual_output": null,
+        "expected_output": "Top-Performing Product Categories by Total Sales Volume\n\n\nRank: 1\nProduct Category: Health Beauty\nTotal Sales Volume: $1,255,695.13\nItems Sold: 9,634\n\nRank: 2\nProduct Category: Watches Gifts\nTotal Sales Volume: $1,198,185.21\nItems Sold: 5,970\n\nRank: 3\nProduct Category: Bed Bath Table\nTotal Sales Volume: $1,035,964.06\nItems Sold: 11,097\n\nRank: 4\nProduct Category: Sports Leisure\nTotal Sales Volume: $979,740.92\nItems Sold: 8,590\n\nRank: 5\nProduct Category: Computers Accessories\nTotal Sales Volume: $904,322.02\nItems Sold: 7,781\n\nKey Takeaways\n\nThe 'Health Beauty' category leads by a significant margin, followed closely by 'Watches Gifts' and 'Bed Bath Table'.\nHome-related categories (Bed Bath Table, Furniture Decor, Housewares) collectively contribute a large portion of sales.\nTech and leisure categories (Computers Accessories, Sports Leisure, Telephony) also perform strongly.\nThese top five categories account for roughly 70% of the total sales volume across all product categories.\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": null,
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "id": "NL-05",
+            "category": "Standard NL",
+            "ground_truth_sql": "SELECT\noi.product_category,\nSUM(oi.price) AS total_sales_volume,\nCOUNT(*) AS items_sold\nFROM fct_order_items AS oi\nJOIN fct_orders AS o\nON oi.order_id = o.order_id\nWHERE o.is_valid_order = 1\nGROUP BY oi.product_category\nORDER BY total_sales_volume DESC;\n",
+            "limit_type": "standard_nl_limit",
+            "intent": "nl",
+            "download_button": true
+        },
+        "custom_column_key_values": null
+    }
+]

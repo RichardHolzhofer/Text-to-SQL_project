@@ -1,0 +1,8 @@
+id: BND-02
+category: Boundaries
+input: Summarize all orders placed in the year 2017.
+ground_truth_sql: ''
+expected_output: '[Paste your perfect output for BND-02 here]'
+metadata:
+  limit_type: standard_nl_limit
+  intent: nl

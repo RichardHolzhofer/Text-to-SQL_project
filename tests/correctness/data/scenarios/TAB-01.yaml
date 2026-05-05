@@ -1,0 +1,8 @@
+id: TAB-01
+category: Standard Tab
+input: Give me a table of the top 5 cities with the most customers.
+ground_truth_sql: ''
+expected_output: '[Paste your perfect output for TAB-01 here]'
+metadata:
+  limit_type: standard_tab_limit
+  intent: tab

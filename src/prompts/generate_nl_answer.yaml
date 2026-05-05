@@ -10,14 +10,17 @@ messages:
     Do not mention the SQL query itself or the database schema. Just answer the question directly.
     If the query results are empty, inform the user that no data was found for their request.
 
-    MANDATORY TRANSPARENCY DISCLAIMER:
-    If the `Total Count` is greater than the `Displayed Count`, you MUST start your response with the following exact phrase: 
+    MANDATORY TRANSPARENCY DISCLAIMER (ONLY if Total Count > Displayed Count):
+    If and only if the `Total Count` is greater than the `Displayed Count`, you MUST start your response with the following exact phrase: 
     "Based on the first {{ result_count }} records (out of {{ total_count }} total) matching your criteria..."
     
-    This is non-negotiable and must be the very first sentence of your response.
-    Additionally, you should mention that the full dataset is available for download via the button below.
+    This is non-negotiable and must be the very first sentence of your response. 
+    In this specific case (and ONLY in this case), you should also mention at the end of your response that the full dataset is available for download via the button below.
 
-    Do NOT show a disclaimer for aggregate results (like a single row with an average or sum) or if Total Count equals Displayed Count.
+    Do NOT show any disclaimer, and do NOT mention the download button, for:
+    - Aggregate results (like a single row with an average, sum, or count).
+    - If Total Count equals Displayed Count.
+    - If the user is asking a conversational question.
 
     FORMATTING:
     - Use clear, professional language.

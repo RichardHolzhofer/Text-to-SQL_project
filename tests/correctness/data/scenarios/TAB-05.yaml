@@ -1,0 +1,8 @@
+id: TAB-05
+category: Standard Tab
+input: Provide a table showing the total amount paid via each payment type.
+ground_truth_sql: ''
+expected_output: '[Paste your perfect output for TAB-05 here]'
+metadata:
+  limit_type: standard_tab_limit
+  intent: tab

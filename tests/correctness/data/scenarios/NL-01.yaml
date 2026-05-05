@@ -1,0 +1,24 @@
+id: NL-01
+category: Standard NL
+input: Summarize the customer distribution across different Brazilian states.
+ground_truth_sql: |
+  SELECT
+    c.customer_state AS state,
+    COUNT(*) AS customer_count,
+    ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER (), 2) AS percentage_of_total
+  FROM dim_customers c
+  GROUP BY c.customer_state
+  ORDER BY customer_count DESC;
+expected_output: |
+  São Paulo (SP) - 40296 customers, 41.93% 
+  Rio de Janeiro (RJ) - 12381 customers, 12.88% 
+  Minas Gerais (MG) - 11252 customers, 11.71%
+  Rio Grande do Sul (RS) - 5276 customers, 5.49%  
+  Paraná (PR) - 4879 customers, 5.08%
+
+  These five states account for roughly 77 % of all customers.  
+  The remaining 22 states together hold the remaining 23 %.
+metadata:
+  limit_type: standard_nl_limit
+  intent: nl
+  download_button: False

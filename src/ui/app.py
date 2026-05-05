@@ -338,8 +338,8 @@ if prompt:
                     "schema_updated_at": schema_ts,
                     "fast_llm": config.fast_model,
                     "smart_llm": config.smart_model,
-                    "max_retry": nodes.max_retry,
-                    "semantic_search_threshold": nodes.semantic_search_threshold,
+                    "max_retry": str(nodes.max_retry),
+                    "semantic_search_threshold": str(nodes.semantic_search_threshold),
                 }
 
                 # Graph state updates inside the propagate_attributes context

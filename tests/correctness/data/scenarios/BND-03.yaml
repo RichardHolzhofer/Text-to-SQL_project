@@ -1,0 +1,8 @@
+id: BND-03
+category: Boundaries
+input: Show a table of the first 50 customers sorted by registration date.
+ground_truth_sql: ''
+expected_output: '[Paste your perfect output for BND-03 here]'
+metadata:
+  limit_type: standard_tab_limit
+  intent: tab

@@ -1,0 +1,8 @@
+id: TAB-02
+category: Standard Tab
+input: Show a table with the count of orders for each current order status.
+ground_truth_sql: ''
+expected_output: '[Paste your perfect output for TAB-02 here]'
+metadata:
+  limit_type: standard_tab_limit
+  intent: tab

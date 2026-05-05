@@ -1,0 +1,8 @@
+id: SEM-05
+category: Semantic
+input: Find and summarize reviews that mention issues with 'customer service' or 'refunds'.
+ground_truth_sql: ''
+expected_output: '[Paste your perfect output for SEM-05 here]'
+metadata:
+  limit_type: semantic_nl_limit
+  intent: semantic_nl

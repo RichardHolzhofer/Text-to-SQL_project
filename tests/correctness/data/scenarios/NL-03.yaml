@@ -1,0 +1,25 @@
+id: NL-03
+category: Standard NL
+input: Provide a summary of revenue trends for the first quarter of 2018.
+ground_truth_sql: |
+  SELECT DATE_TRUNC('month', o.order_purchase_timestamp) AS month,
+  SUM(o.total_order_value) AS total_revenue,
+  COUNT(*) AS order_count,
+  AVG(o.total_order_value) AS avg_order_value
+  FROM fct_orders AS o
+  WHERE o.is_valid_order = 1
+  AND o.order_purchase_timestamp >= DATE '2018-01-01'
+  AND o.order_purchase_timestamp < DATE '2018-04-01'
+  GROUP BY month
+  ORDER BY month;
+expected_output: |
+  January 2018: Revenue of $1,102,639.41 from 7,187 orders (average order value $153.42).  
+  February 2018: Revenue fell to $979,966.23 from 6,625 orders (average order value $147.92).  
+  March 2018: Revenue rebounded to $1,152,736.74 from 7,168 orders (average order value $160.82).  
+
+  Trend summary  
+  Revenue, order count and average order value dipped in February but recovered strongly in March, with the highest monthly revenue in the quarter.
+metadata:
+  limit_type: standard_nl_limit
+  intent: nl
+  download_button: False

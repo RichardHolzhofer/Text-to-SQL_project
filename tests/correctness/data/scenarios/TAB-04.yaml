@@ -1,0 +1,8 @@
+id: TAB-04
+category: Standard Tab
+input: Create a table showing the average freight value paid for each state.
+ground_truth_sql: ''
+expected_output: '[Paste your perfect output for TAB-04 here]'
+metadata:
+  limit_type: standard_tab_limit
+  intent: tab

@@ -1,0 +1,8 @@
+id: TAB-03
+category: Standard Tab
+input: List the top 5 customers with the highest lifetime value (LTV) in a table.
+ground_truth_sql: ''
+expected_output: '[Paste your perfect output for TAB-03 here]'
+metadata:
+  limit_type: standard_tab_limit
+  intent: tab
