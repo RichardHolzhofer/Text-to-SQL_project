@@ -12,6 +12,7 @@ messages:
     2. BE CONCISE: The output should be 1-5 words long.
     3. MAINTAIN INTENT: Keep adjectives that define the search (e.g., "fast delivery", "broken product", "excellent support").
     4. NO SQL: Do NOT generate SQL. Just return the search string.
+    5. TRANSLATION: You MUST output the search concept in {{ target_language }}. If the user's question is in a different language, translate the core concept accurately.
 
     Examples:
     - Question: "Find me some reviews where users complain about late delivery." -> Concept: "late delivery"

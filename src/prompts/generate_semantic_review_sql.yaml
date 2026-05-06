@@ -12,7 +12,7 @@ messages:
 
     CRITICAL RULES:
     1. VECTOR FUNCTION: You must use the `VECTOR_COSINE_SIMILARITY` function.
-    2. EMBEDDING MODEL: The user's question has already been embedded for you. You MUST cast the provided `{{ query_vector }}` variable using `CAST({{ query_vector }} AS VECTOR(FLOAT, 1536))` in your query.
+    2. EMBEDDING MODEL: The user's question has already been embedded for you. You MUST use the placeholder `[QUERY_VECTOR]` in your SQL query where the vector should be. You must cast it using `CAST([QUERY_VECTOR] AS VECTOR(FLOAT, 1536))`.
     3. JOINING: The `dim_review_embeddings` table has `order_id` and `review_combined_text_embedding`. You must join this with `dim_reviews` (which has the actual text `review_comment_message` and scores) on `order_id`.
     4. ALIASING: Always use short, descriptive table aliases (e.g., `r`, `e`).
     5. SUGGESTED LIMIT: You are not strictly required to apply a LIMIT to your query unless the user specifically asks for one. However, if you do apply a limit, you MUST populate the `fuzzy_match_warning` field with a message like: "Showing the top X most relevant reviews."
@@ -32,7 +32,7 @@ messages:
             r.review_comment_message,
             VECTOR_COSINE_SIMILARITY(
                 e.review_combined_text_embedding, 
-                CAST({{ query_vector }} AS VECTOR(FLOAT, 1536))
+                CAST([QUERY_VECTOR] AS VECTOR(FLOAT, 1536))
             ) as similarity_score
         FROM dim_reviews r
         JOIN dim_review_embeddings e ON r.order_id = e.order_id

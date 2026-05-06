@@ -123,8 +123,9 @@ class Router(BaseModel):
 
 
 class SQLGenerator(BaseModel):
-    thought_process: str = Field(
-        description="The 'Chain of Thought' reasoning before writing the SQL query."
+    thought_process: Optional[str] = Field(
+        default=None,
+        description="The 'Chain of Thought' reasoning before writing the SQL query.",
     )
     sql_query: Optional[str] = Field(
         default=None,
@@ -141,6 +142,10 @@ class SQLGenerator(BaseModel):
     search_concept: Optional[str] = Field(
         default=None,
         description="The extracted core semantic concept used for vector search.",
+    )
+    query_vector: Optional[List[float]] = Field(
+        default=None,
+        description="The embedding vector for semantic search.",
     )
 
 
