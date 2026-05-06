@@ -1,8 +1,76 @@
 id: TAB-05
 category: Standard Tab
-input: Provide a table showing the total amount paid via each payment type.
-ground_truth_sql: ''
-expected_output: '[Paste your perfect output for TAB-05 here]'
+input: Show a comparison table of the average review score for orders that used a voucher versus those that didn't, for the top 5 states with the most orders.
+ground_truth_sql: |
+  WITH top_states AS (
+  SELECT customer_state, COUNT(order_id) AS order_count
+  FROM fct_orders
+  GROUP BY customer_state
+  ORDER BY order_count DESC
+  LIMIT 5
+  )
+  SELECT 
+  o.customer_state,
+  o.has_voucher_payment,
+  AVG(o.review_score) AS average_review_score
+  FROM fct_orders o
+  JOIN top_states ts ON o.customer_state = ts.customer_state
+  GROUP BY o.customer_state, o.has_voucher_payment
+  ORDER BY o.customer_state, o.has_voucher_payment;
+expected_output: |
+  Here are the tabular results you requested.
+  [
+  {
+    "CUSTOMER_STATE": "mg",
+    "HAS_VOUCHER_PAYMENT": 0,
+    "AVERAGE_REVIEW_SCORE": 4.123381262838
+  },
+  {
+    "CUSTOMER_STATE": "mg",
+    "HAS_VOUCHER_PAYMENT": 1,
+    "AVERAGE_REVIEW_SCORE": 4.047945205479
+  },
+  {
+    "CUSTOMER_STATE": "pr",
+    "HAS_VOUCHER_PAYMENT": 0,
+    "AVERAGE_REVIEW_SCORE": 4.167973586463
+  },
+  {
+    "CUSTOMER_STATE": "pr",
+    "HAS_VOUCHER_PAYMENT": 1,
+    "AVERAGE_REVIEW_SCORE": 4.185929648241
+  },
+  {
+    "CUSTOMER_STATE": "rj",
+    "HAS_VOUCHER_PAYMENT": 0,
+    "AVERAGE_REVIEW_SCORE": 3.857578220236
+  },
+  {
+    "CUSTOMER_STATE": "rj",
+    "HAS_VOUCHER_PAYMENT": 1,
+    "AVERAGE_REVIEW_SCORE": 3.810481413163
+  },
+  {
+    "CUSTOMER_STATE": "rs",
+    "HAS_VOUCHER_PAYMENT": 0,
+    "AVERAGE_REVIEW_SCORE": 4.124267070172
+  },
+  {
+    "CUSTOMER_STATE": "rs",
+    "HAS_VOUCHER_PAYMENT": 1,
+    "AVERAGE_REVIEW_SCORE": 4.184357541899
+  },
+  {
+    "CUSTOMER_STATE": "sp",
+    "HAS_VOUCHER_PAYMENT": 0,
+    "AVERAGE_REVIEW_SCORE": 4.164329597335
+  },
+  {
+    "CUSTOMER_STATE": "sp",
+    "HAS_VOUCHER_PAYMENT": 1,
+    "AVERAGE_REVIEW_SCORE": 4.070175438596
+  }
+  ]
 metadata:
   limit_type: standard_tab_limit
   intent: tab

@@ -11,9 +11,9 @@ ground_truth_sql: |
 expected_output: |
   The data show that new customers spend more on average per order than returning customers.
 
-  Average order value for new customers: $159.31  
-  Average order value for returning customers: $145.82  
-  Difference: New customers' orders are on average $13.48 higher than those of returning customers.
+  Average order value for new customers: 159.31 BRL
+  Average order value for returning customers: 145.82 BRL
+  Difference: New customers' orders are on average 13.48 BRL higher than those of returning customers.
 
   This suggests that when customers first make a purchase, they tend to order more (or higher-priced items) than they do in subsequent visits. It could reflect a higher initial order size, a promotional incentive for first-time buyers, or a difference in product mix between first-time and repeat purchases.
 metadata:

@@ -1,5 +1,71 @@
 [
     {
+        "input": "List every single order ID and its status in the database.",
+        "actual_output": null,
+        "expected_output": "Showing the first 10 records out of 1000+ total matches found. The full dataset can be downloaded as a CSV below.\n\nNote: The full results exceeded our safety limit of 1000 records. Please run the following query directly in your database to get all requested records:\n```sql\nSELECT o.order_id,\n      o.order_status\nFROM fct_orders AS o\nORDER BY o.order_id;\n```\n[\n{\n  \"ORDER_ID\": \"00010242fe8c5a6d1ba2dd792cb16214\",\n  \"ORDER_STATUS\": \"delivered\"\n},\n{\n  \"ORDER_ID\": \"00018f77f2f0320c557190d7a144bdd3\",\n  \"ORDER_STATUS\": \"delivered\"\n},\n{\n  \"ORDER_ID\": \"000229ec398224ef6ca0657da4fc703e\",\n  \"ORDER_STATUS\": \"delivered\"\n},\n{\n  \"ORDER_ID\": \"00024acbcdf0a6daa1e931b038114c75\",\n  \"ORDER_STATUS\": \"delivered\"\n},\n{\n  \"ORDER_ID\": \"00042b26cf59d7ce69dfabb4e55b4fd9\",\n  \"ORDER_STATUS\": \"delivered\"\n},\n{\n  \"ORDER_ID\": \"00048cc3ae777c65dbb7d2a0634bc1ea\",\n  \"ORDER_STATUS\": \"delivered\"\n},\n{\n  \"ORDER_ID\": \"00054e8431b9d7675808bcb819fb4a32\",\n  \"ORDER_STATUS\": \"delivered\"\n},\n{\n  \"ORDER_ID\": \"000576fe39319847cbb9d288c5617fa6\",\n  \"ORDER_STATUS\": \"delivered\"\n},\n{\n  \"ORDER_ID\": \"0005a1a1728c9d785b8e2b08b904576c\",\n  \"ORDER_STATUS\": \"delivered\"\n},\n{\n  \"ORDER_ID\": \"0005f50442cb953dcd1d21e1fb923495\",\n  \"ORDER_STATUS\": \"delivered\"\n}\n]\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": null,
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "id": "BND-01",
+            "category": "Boundaries",
+            "ground_truth_sql": "SELECT o.order_id,\no.order_status\nFROM fct_orders AS o\nORDER BY o.order_id;\n",
+            "limit_type": "safety_limit",
+            "intent": "tab",
+            "download_button": true,
+            "is_capped": true
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "Summarize the individual order details for all customers in Sao Paulo during 2017, including product and pricing information.",
+        "actual_output": null,
+        "expected_output": "Based on the first 100 records (out of 1000+ total) matching your criteria, here is a summary of individual order details for customers in Sao Paulo during 2017:\n\nOrders include a variety of products with prices ranging from as low as 5.53 to as high as 610.\nFreight values for these orders range from 1.8 to 37.54.\nOrders were placed throughout the year, with timestamps indicating purchases from January to December 2017.\nSome orders contain multiple items, as indicated by repeated order IDs with different product IDs.\n\nThe full dataset is available for download via the button below.\n\nNote: The full results exceeded our safety limit of 1000 records. Please run the following query directly in your database to get all requested records:\n```sql\nSELECT \n    o.order_id, \n    oi.product_id, \n    oi.price, \n    oi.freight_value, \n    o.order_purchase_timestamp\nFROM \n    fct_orders o\nJOIN \n    dim_customers c ON o.customer_unique_id = c.customer_unique_id\nJOIN \n    fct_order_items oi ON o.order_id = oi.order_id\nWHERE \n    LOWER(c.customer_city) = 'sao paulo'\n    AND o.order_purchase_timestamp >= '2017-01-01' \n    AND o.order_purchase_timestamp < '2018-01-01'\nORDER BY \n    o.order_id;\n```\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": null,
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "id": "BND-02",
+            "category": "Boundaries",
+            "ground_truth_sql": "SELECT \no.order_id, \noi.product_id, \noi.price, \noi.freight_value, \no.order_purchase_timestamp\nFROM \nfct_orders o\nJOIN \ndim_customers c ON o.customer_unique_id = c.customer_unique_id\nJOIN \nfct_order_items oi ON o.order_id = oi.order_id\nWHERE \nLOWER(c.customer_city) = 'sao paulo'\nAND o.order_purchase_timestamp >= '2017-01-01' \nAND o.order_purchase_timestamp < '2018-01-01'\nORDER BY \no.order_id;\n",
+            "limit_type": "standard_nl_limit",
+            "intent": "nl",
+            "download_button": true,
+            "is_capped": true
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "Show a table of the first 50 customers sorted by registration date, including their unique ID, city, state, first purchase date, and lifetime value.",
+        "actual_output": null,
+        "expected_output": "Showing the first 10 records out of 50 total matches found. The full dataset can be downloaded as a CSV below.\n[\n{\n  \"CUSTOMER_UNIQUE_ID\": \"b7d76e111c89f7ebf14761390f0f7d17\",\n  \"CUSTOMER_CITY\": \"boa vista\",\n  \"CUSTOMER_STATE\": \"rr\",\n  \"FIRST_PURCHASE_AT\": \"2016-09-04T21:15:19+02:00\",\n  \"LIFETIME_VALUE\": 136.23\n},\n{\n  \"CUSTOMER_UNIQUE_ID\": \"4854e9b3feff728c13ee5fc7d1547e92\",\n  \"CUSTOMER_CITY\": \"passo fundo\",\n  \"CUSTOMER_STATE\": \"rs\",\n  \"FIRST_PURCHASE_AT\": \"2016-09-05T00:15:34+02:00\",\n  \"LIFETIME_VALUE\": 0\n},\n{\n  \"CUSTOMER_UNIQUE_ID\": \"009b0127b727ab0ba422f6d9604487c7\",\n  \"CUSTOMER_CITY\": \"sao jose dos campos\",\n  \"CUSTOMER_STATE\": \"sp\",\n  \"FIRST_PURCHASE_AT\": \"2016-09-13T15:24:19+02:00\",\n  \"LIFETIME_VALUE\": 0\n},\n{\n  \"CUSTOMER_UNIQUE_ID\": \"830d5b7aaa3b6f1e9ad63703bec97d23\",\n  \"CUSTOMER_CITY\": \"sao joaquim da barra\",\n  \"CUSTOMER_STATE\": \"sp\",\n  \"FIRST_PURCHASE_AT\": \"2016-09-15T12:16:38+02:00\",\n  \"LIFETIME_VALUE\": 0\n},\n{\n  \"CUSTOMER_UNIQUE_ID\": \"0eb1ee9dba87f5b36b4613a65074337c\",\n  \"CUSTOMER_CITY\": \"sao paulo\",\n  \"CUSTOMER_STATE\": \"sp\",\n  \"FIRST_PURCHASE_AT\": \"2016-10-02T22:07:52+02:00\",\n  \"LIFETIME_VALUE\": 0\n},\n{\n  \"CUSTOMER_UNIQUE_ID\": \"32ea3bdedab835c3aa6cb68ce66565ef\",\n  \"CUSTOMER_CITY\": \"sao paulo\",\n  \"CUSTOMER_STATE\": \"sp\",\n  \"FIRST_PURCHASE_AT\": \"2016-10-03T09:44:50+02:00\",\n  \"LIFETIME_VALUE\": 137.16\n},\n{\n  \"CUSTOMER_UNIQUE_ID\": \"2f64e403852e6893ae37485d5fcacdaf\",\n  \"CUSTOMER_CITY\": \"panambi\",\n  \"CUSTOMER_STATE\": \"rs\",\n  \"FIRST_PURCHASE_AT\": \"2016-10-03T16:56:50+02:00\",\n  \"LIFETIME_VALUE\": 39.09\n},\n{\n  \"CUSTOMER_UNIQUE_ID\": \"b8b8726af116a5cfb35b0315ecef9172\",\n  \"CUSTOMER_CITY\": \"rio de janeiro\",\n  \"CUSTOMER_STATE\": \"rj\",\n  \"FIRST_PURCHASE_AT\": \"2016-10-03T21:01:41+02:00\",\n  \"LIFETIME_VALUE\": 0\n},\n{\n  \"CUSTOMER_UNIQUE_ID\": \"61db744d2f835035a5625b59350c6b63\",\n  \"CUSTOMER_CITY\": \"porto alegre\",\n  \"CUSTOMER_STATE\": \"rs\",\n  \"FIRST_PURCHASE_AT\": \"2016-10-03T21:13:36+02:00\",\n  \"LIFETIME_VALUE\": 53.73\n},\n{\n  \"CUSTOMER_UNIQUE_ID\": \"8d3a54507421dbd2ce0a1d58046826e0\",\n  \"CUSTOMER_CITY\": \"hortolandia\",\n  \"CUSTOMER_STATE\": \"sp\",\n  \"FIRST_PURCHASE_AT\": \"2016-10-03T22:06:03+02:00\",\n  \"LIFETIME_VALUE\": 133.46\n}\n]\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": null,
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "id": "BND-03",
+            "category": "Boundaries",
+            "ground_truth_sql": "SELECT\nc.customer_unique_id,\nc.customer_city,\nc.customer_state,\nc.first_purchase_at,\nc.lifetime_value\nFROM dim_customers AS c\nORDER BY c.first_purchase_at ASC\nLIMIT 50;\n",
+            "limit_type": "standard_tab_limit",
+            "intent": "tab",
+            "download_button": true,
+            "is_capped": false
+        },
+        "custom_column_key_values": null
+    },
+    {
         "input": "Summarize the customer distribution across different Brazilian states.",
         "actual_output": null,
         "expected_output": "São Paulo (SP) - 40296 customers, 41.93% \nRio de Janeiro (RJ) - 12381 customers, 12.88% \nMinas Gerais (MG) - 11252 customers, 11.71%\nRio Grande do Sul (RS) - 5276 customers, 5.49%  \nParaná (PR) - 4879 customers, 5.08%\n\nThese five states account for roughly 77 % of all customers.  \nThe remaining 22 states together hold the remaining 23 %.\n",
@@ -15,7 +81,8 @@
             "category": "Standard NL",
             "ground_truth_sql": "SELECT\n  c.customer_state AS state,\n  COUNT(*) AS customer_count,\n  ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER (), 2) AS percentage_of_total\nFROM dim_customers c\nGROUP BY c.customer_state\nORDER BY customer_count DESC;\n",
             "limit_type": "standard_nl_limit",
-            "intent": "nl"
+            "intent": "nl",
+            "download_button": false
         },
         "custom_column_key_values": null
     },
@@ -35,7 +102,8 @@
             "category": "Standard NL",
             "ground_truth_sql": "SELECT \nAVG(CASE WHEN dc.is_returning_customer = 1 THEN dc.average_order_value END) AS returning_customers_avg_order_value,\nAVG(CASE WHEN dc.is_returning_customer = 0 THEN dc.average_order_value END) AS new_customers_avg_order_value,\nAVG(CASE WHEN dc.is_returning_customer = 1 THEN dc.average_order_value END) -\nAVG(CASE WHEN dc.is_returning_customer = 0 THEN dc.average_order_value END) AS difference_in_avg_order_value\nFROM dim_customers dc;\n",
             "limit_type": "standard_nl_limit",
-            "intent": "nl"
+            "intent": "nl",
+            "download_button": false
         },
         "custom_column_key_values": null
     },
@@ -55,7 +123,8 @@
             "category": "Standard NL",
             "ground_truth_sql": "SELECT DATE_TRUNC('month', o.order_purchase_timestamp) AS month,\nSUM(o.total_order_value) AS total_revenue,\nCOUNT(*) AS order_count,\nAVG(o.total_order_value) AS avg_order_value\nFROM fct_orders AS o\nWHERE o.is_valid_order = 1\nAND o.order_purchase_timestamp >= DATE '2018-01-01'\nAND o.order_purchase_timestamp < DATE '2018-04-01'\nGROUP BY month\nORDER BY month;\n",
             "limit_type": "standard_nl_limit",
-            "intent": "nl"
+            "intent": "nl",
+            "download_button": false
         },
         "custom_column_key_values": null
     },
@@ -75,7 +144,8 @@
             "category": "Standard NL",
             "ground_truth_sql": "SELECT\nLOWER(o.customer_state) AS state,\nCOUNT(*) AS total_orders,\nSUM(o.is_delivered_on_time) AS on_time_deliveries,\nAVG(o.is_delivered_on_time) * 100 AS on_time_percentage,\nAVG(o.days_delayed) AS avg_days_delayed,\nAVG(o.actual_delivery_time_days) AS avg_actual_delivery_days,\nAVG(o.estimated_delivery_time_days) AS avg_estimated_delivery_days\nFROM fct_orders AS o\nWHERE LOWER(o.customer_state) IN ('sp', 'rj')\nAND o.is_valid_order = 1\nGROUP BY LOWER(o.customer_state)\nORDER BY state;\n",
             "limit_type": "standard_nl_limit",
-            "intent": "nl"
+            "intent": "nl",
+            "download_button": false
         },
         "custom_column_key_values": null
     },
@@ -97,6 +167,106 @@
             "limit_type": "standard_nl_limit",
             "intent": "nl",
             "download_button": true
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "Give me a table of the top 5 cities with the most customers.",
+        "actual_output": null,
+        "expected_output": "Here are the tabular results you requested.\n[\n{\n\"CUSTOMER_CITY\": \"sao paulo\",\n\"CUSTOMER_COUNT\": 14973\n},\n{\n\"CUSTOMER_CITY\": \"rio de janeiro\",\n\"CUSTOMER_COUNT\": 6613\n},\n{\n\"CUSTOMER_CITY\": \"belo horizonte\",\n\"CUSTOMER_COUNT\": 2669\n},\n{\n\"CUSTOMER_CITY\": \"brasilia\",\n\"CUSTOMER_COUNT\": 2065\n},\n{\n\"CUSTOMER_CITY\": \"curitiba\",\n\"CUSTOMER_COUNT\": 1462\n}\n]\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": null,
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "id": "TAB-01",
+            "category": "Standard Tab",
+            "ground_truth_sql": "SELECT \ndc.customer_city, \nCOUNT(dc.customer_unique_id) AS customer_count\nFROM \ndim_customers dc\nGROUP BY \ndc.customer_city\nORDER BY \ncustomer_count DESC\nLIMIT 5;\n",
+            "limit_type": "standard_tab_limit",
+            "intent": "tab"
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "Show a table with the count of orders for each current order status.",
+        "actual_output": null,
+        "expected_output": "Here are the tabular results you requested.\n[\n{\n  \"ORDER_STATUS\": \"approved\",\n  \"ORDER_COUNT\": 2\n},\n{\n  \"ORDER_STATUS\": \"canceled\",\n  \"ORDER_COUNT\": 625\n},\n{\n  \"ORDER_STATUS\": \"created\",\n  \"ORDER_COUNT\": 5\n},\n{\n  \"ORDER_STATUS\": \"delivered\",\n  \"ORDER_COUNT\": 96478\n},\n{\n  \"ORDER_STATUS\": \"invoiced\",\n  \"ORDER_COUNT\": 314\n},\n{\n  \"ORDER_STATUS\": \"processing\",\n  \"ORDER_COUNT\": 301\n},\n{\n  \"ORDER_STATUS\": \"shipped\",\n  \"ORDER_COUNT\": 1107\n},\n{\n  \"ORDER_STATUS\": \"unavailable\",\n  \"ORDER_COUNT\": 609\n}\n]\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": null,
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "id": "TAB-02",
+            "category": "Standard Tab",
+            "ground_truth_sql": "SELECT o.order_status, COUNT(o.order_id) AS order_count\nFROM fct_orders o\nGROUP BY o.order_status\nORDER BY o.order_status;\n",
+            "limit_type": "standard_tab_limit",
+            "intent": "tab"
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "List the top 5 customers by lifetime value, and include their city, state, and the total number of distinct product categories they have shopped from.",
+        "actual_output": null,
+        "expected_output": "Here are the tabular results you requested.\n[\n{\n  \"CUSTOMER_UNIQUE_ID\": \"0a0a92112bd4c708ca5fde585afaa872\",\n  \"CUSTOMER_CITY\": \"rio de janeiro\",\n  \"CUSTOMER_STATE\": \"rj\",\n  \"LIFETIME_VALUE\": 13664.08,\n  \"DISTINCT_PRODUCT_CATEGORIES\": 1\n},\n{\n  \"CUSTOMER_UNIQUE_ID\": \"da122df9eeddfedc1dc1f5349a1a690c\",\n  \"CUSTOMER_CITY\": \"araruama\",\n  \"CUSTOMER_STATE\": \"rj\",\n  \"LIFETIME_VALUE\": 7571.63,\n  \"DISTINCT_PRODUCT_CATEGORIES\": 1\n},\n{\n  \"CUSTOMER_UNIQUE_ID\": \"763c8b1c9c68a0229c42c9fc6f662b93\",\n  \"CUSTOMER_CITY\": \"vila velha\",\n  \"CUSTOMER_STATE\": \"es\",\n  \"LIFETIME_VALUE\": 7274.88,\n  \"DISTINCT_PRODUCT_CATEGORIES\": 1\n},\n{\n  \"CUSTOMER_UNIQUE_ID\": \"dc4802a71eae9be1dd28f5d788ceb526\",\n  \"CUSTOMER_CITY\": \"campo grande\",\n  \"CUSTOMER_STATE\": \"ms\",\n  \"LIFETIME_VALUE\": 6929.31,\n  \"DISTINCT_PRODUCT_CATEGORIES\": 1\n},\n{\n  \"CUSTOMER_UNIQUE_ID\": \"459bef486812aa25204be022145caa62\",\n  \"CUSTOMER_CITY\": \"vitoria\",\n  \"CUSTOMER_STATE\": \"es\",\n  \"LIFETIME_VALUE\": 6922.21,\n  \"DISTINCT_PRODUCT_CATEGORIES\": 1\n}\n]\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": null,
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "id": "TAB-03",
+            "category": "Standard Tab",
+            "ground_truth_sql": "SELECT \n  c.customer_unique_id, \n  c.customer_city, \n  c.customer_state, \n  c.lifetime_value, \n  COUNT(DISTINCT oi.product_category) AS distinct_product_categories\n  FROM \n  dim_customers c\n  JOIN \n  fct_orders o ON c.customer_unique_id = o.customer_unique_id\n  JOIN \n  fct_order_items oi ON o.order_id = oi.order_id\n  GROUP BY \n  c.customer_unique_id, c.customer_city, c.customer_state, c.lifetime_value\n  ORDER BY \n  c.lifetime_value DESC\n  LIMIT 5;\n",
+            "limit_type": "standard_tab_limit",
+            "intent": "tab"
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "List the top 3 cities based on total revenue generated by 'returning customers' who purchased items in the 'watches gifts' category.",
+        "actual_output": null,
+        "expected_output": "Here are the tabular results you requested.\n[\n{\n  \"CITY\": \"sao paulo\",\n  \"TOTAL_REVENUE\": 10018.25\n},\n{\n  \"CITY\": \"rio de janeiro\",\n  \"TOTAL_REVENUE\": 4676.01\n},\n{\n  \"CITY\": \"duque de caxias\",\n  \"TOTAL_REVENUE\": 3371.79\n}\n]\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": null,
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "id": "TAB-04",
+            "category": "Standard Tab",
+            "ground_truth_sql": "SELECT \nLOWER(dc.customer_city) AS city, \nSUM(fo.total_order_value) AS total_revenue\nFROM \ndim_customers dc\nJOIN \nfct_orders fo ON dc.customer_unique_id = fo.customer_unique_id\nJOIN \nfct_order_items foi ON fo.order_id = foi.order_id\nWHERE \ndc.is_returning_customer = 1\nAND LOWER(foi.product_category) = 'watches gifts'\nGROUP BY \nLOWER(dc.customer_city)\nORDER BY \ntotal_revenue DESC\nLIMIT 3;\n",
+            "limit_type": "standard_tab_limit",
+            "intent": "tab"
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "Show a comparison table of the average review score for orders that used a voucher versus those that didn't, for the top 5 states with the most orders.",
+        "actual_output": null,
+        "expected_output": "Here are the tabular results you requested.\n[\n{\n  \"CUSTOMER_STATE\": \"mg\",\n  \"HAS_VOUCHER_PAYMENT\": 0,\n  \"AVERAGE_REVIEW_SCORE\": 4.123381262838\n},\n{\n  \"CUSTOMER_STATE\": \"mg\",\n  \"HAS_VOUCHER_PAYMENT\": 1,\n  \"AVERAGE_REVIEW_SCORE\": 4.047945205479\n},\n{\n  \"CUSTOMER_STATE\": \"pr\",\n  \"HAS_VOUCHER_PAYMENT\": 0,\n  \"AVERAGE_REVIEW_SCORE\": 4.167973586463\n},\n{\n  \"CUSTOMER_STATE\": \"pr\",\n  \"HAS_VOUCHER_PAYMENT\": 1,\n  \"AVERAGE_REVIEW_SCORE\": 4.185929648241\n},\n{\n  \"CUSTOMER_STATE\": \"rj\",\n  \"HAS_VOUCHER_PAYMENT\": 0,\n  \"AVERAGE_REVIEW_SCORE\": 3.857578220236\n},\n{\n  \"CUSTOMER_STATE\": \"rj\",\n  \"HAS_VOUCHER_PAYMENT\": 1,\n  \"AVERAGE_REVIEW_SCORE\": 3.810481413163\n},\n{\n  \"CUSTOMER_STATE\": \"rs\",\n  \"HAS_VOUCHER_PAYMENT\": 0,\n  \"AVERAGE_REVIEW_SCORE\": 4.124267070172\n},\n{\n  \"CUSTOMER_STATE\": \"rs\",\n  \"HAS_VOUCHER_PAYMENT\": 1,\n  \"AVERAGE_REVIEW_SCORE\": 4.184357541899\n},\n{\n  \"CUSTOMER_STATE\": \"sp\",\n  \"HAS_VOUCHER_PAYMENT\": 0,\n  \"AVERAGE_REVIEW_SCORE\": 4.164329597335\n},\n{\n  \"CUSTOMER_STATE\": \"sp\",\n  \"HAS_VOUCHER_PAYMENT\": 1,\n  \"AVERAGE_REVIEW_SCORE\": 4.070175438596\n}\n]\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": null,
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "id": "TAB-05",
+            "category": "Standard Tab",
+            "ground_truth_sql": "WITH top_states AS (\nSELECT customer_state, COUNT(order_id) AS order_count\nFROM fct_orders\nGROUP BY customer_state\nORDER BY order_count DESC\nLIMIT 5\n)\nSELECT \no.customer_state,\no.has_voucher_payment,\nAVG(o.review_score) AS average_review_score\nFROM fct_orders o\nJOIN top_states ts ON o.customer_state = ts.customer_state\nGROUP BY o.customer_state, o.has_voucher_payment\nORDER BY o.customer_state, o.has_voucher_payment;\n",
+            "limit_type": "standard_tab_limit",
+            "intent": "tab"
         },
         "custom_column_key_values": null
     }

@@ -13,9 +13,9 @@ ground_truth_sql: |
   GROUP BY month
   ORDER BY month;
 expected_output: |
-  January 2018: Revenue of $1,102,639.41 from 7,187 orders (average order value $153.42).  
-  February 2018: Revenue fell to $979,966.23 from 6,625 orders (average order value $147.92).  
-  March 2018: Revenue rebounded to $1,152,736.74 from 7,168 orders (average order value $160.82).  
+  January 2018: Revenue of 1,102,639.41 BRL from 7,187 orders (average order value 153.42 BRL).
+  February 2018: Revenue fell to 979,966.23 BRL from 6,625 orders (average order value 147.92 BRL).
+  March 2018: Revenue rebounded to 1,152,736.74 BRL from 7,168 orders (average order value 160.82 BRL).  
 
   Trend summary  
   Revenue, order count and average order value dipped in February but recovered strongly in March, with the highest monthly revenue in the quarter.

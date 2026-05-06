@@ -36,12 +36,12 @@ def create_embeddings(
         conn = config.get_snowflake_connection(write_access=True)
         cursor = conn.cursor()
 
-        # Create the side table
+        # Create (or recreate) the side table with new dimensions
         cursor.execute(
             f"""
-            CREATE TABLE IF NOT EXISTS {target_schema}.{target_table} (
+            CREATE OR REPLACE TABLE {target_schema}.{target_table} (
                 {id_column} TEXT PRIMARY KEY,
-                {embedding_column} VECTOR(FLOAT, 1024)
+                {embedding_column} VECTOR(FLOAT, 768)
             )
             """
         )
@@ -54,7 +54,7 @@ def create_embeddings(
             INSERT INTO {target_schema}.{target_table} ({id_column}, {embedding_column})
             SELECT
                 {id_column},
-                SNOWFLAKE.CORTEX.EMBED_TEXT_1024('multilingual-e5-large', {text_column})
+                SNOWFLAKE.CORTEX.EMBED_TEXT_768('snowflake-arctic-embed-m-v1.5', {text_column})
             FROM {source_schema}.{source_table}
             WHERE {text_column} IS NOT NULL
             """

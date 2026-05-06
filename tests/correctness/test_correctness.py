@@ -1,4 +1,5 @@
 import os
+import re
 import uuid
 
 import pytest
@@ -48,6 +49,19 @@ dataset = EvaluationDataset.from_json(
 )
 
 
+def normalize_text(text: str) -> str:
+    """Removes markdown formatting and normalizes whitespace for cleaner comparison."""
+    if not text:
+        return ""
+    # Remove markdown bolding and italics
+    text = text.replace("**", "").replace("*", "")
+    # Remove list markers at the start of lines
+    text = re.sub(r"^\s*[-*]\s+", "", text, flags=re.MULTILINE)
+    # Normalize whitespace
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
 # 4. TEST EXECUTION
 @pytest.mark.parametrize("golden", dataset.goldens)
 def test_text_to_sql_correctness(golden, graph, cached_schema):
@@ -64,20 +78,46 @@ def test_text_to_sql_correctness(golden, graph, cached_schema):
     print(f"\nRunning test for: {golden.input}")
     result = graph.invoke(initial_state, config=config_run)
 
-    # Capture the actual output (NL answer or Tabular answer description)
-    actual_output = result.get("answer") or "No answer generated."
+    # 3. Extract Outputs based on Intent
+    metadata = golden.additional_metadata
+    intent = metadata.get("intent", "nl")
 
-    # If it was a tabular request, the NL answer usually contains the description/disclaimer
-    # and the tabular_answer object contains the actual data.
-    if result.get("tabular_answer"):
-        actual_output = result["tabular_answer"].answer
+    if "tab" in intent:
+        # For tabular, we evaluate the 'answer' disclaimer text
+        actual_output = (
+            result.get("tabular_answer").answer if result.get("tabular_answer") else ""
+        )
+        # Check is_capped logic
+        expected_capped = metadata.get("is_capped", False)
+        actual_capped = (
+            result.get("tabular_answer").is_capped
+            if result.get("tabular_answer")
+            else False
+        )
+        assert actual_capped == expected_capped, (
+            f"Capping mismatch for {metadata.get('id')}"
+        )
+    else:
+        actual_output = result.get("answer") or "No answer generated."
 
-    # Create the test case for DeepEval
+    # 4. Validate Download Button mention
+    expected_download = metadata.get("download_button", False)
+    has_download_mention = "download button" in actual_output.lower()
+    if expected_download:
+        assert has_download_mention, (
+            f"Model forgot to mention download button in {metadata.get('id')}"
+        )
+    else:
+        assert not has_download_mention, (
+            f"Model hallucinated a download button in {metadata.get('id')}"
+        )
+
+    # Create the test case for DeepEval with Normalization
     test_case = LLMTestCase(
         input=golden.input,
-        actual_output=actual_output,
-        expected_output=golden.expected_output,
-        additional_metadata=golden.additional_metadata,  # Includes ID, Category, SQL etc.
+        actual_output=normalize_text(actual_output),
+        expected_output=normalize_text(golden.expected_output),
+        additional_metadata=metadata,
     )
 
     # Evaluate

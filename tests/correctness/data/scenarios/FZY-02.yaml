@@ -1,0 +1,38 @@
+id: FZY-02
+category: Fuzzy Matching
+input: List all items sold in the 'bed bath tabl' category.
+ground_truth_sql: |
+  SELECT 
+  oi.order_id, 
+  oi.product_id, 
+  oi.price, 
+  oi.freight_value
+  FROM 
+  fct_order_items oi
+  WHERE 
+  EDITDISTANCE(LOWER(oi.product_category), LOWER('bed bath tabl')) <= 2
+  ORDER BY 
+  oi.order_id;
+expected_output: |
+  Showing the first 10 records out of 1000+ total matches found. The full dataset can be downloaded as a CSV below.
+
+  Note: The full results exceeded our safety limit of 1000 records. Please run the following query directly in your database to get all requested records:
+  ```sql
+  SELECT 
+  oi.order_id, 
+  oi.product_id, 
+  oi.price, 
+  oi.freight_value
+  FROM 
+  fct_order_items oi
+  WHERE 
+  EDITDISTANCE(LOWER(oi.product_category), LOWER('bed bath tabl')) <= 2
+  ORDER BY 
+  oi.order_id;
+  ```
+metadata:
+  limit_type: standard_tab_limit
+  intent: tab
+  download_button: True
+  is_capped: True
+  is_editdistance: True

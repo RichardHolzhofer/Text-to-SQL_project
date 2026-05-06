@@ -1,0 +1,17 @@
+id: FZY-01
+category: Fuzzy Matching
+input: How many orders were placed by customers in Sao Palo?
+ground_truth_sql: |
+  SELECT COUNT(o.order_id) AS order_count
+  FROM fct_orders o
+  JOIN dim_customers c ON o.customer_unique_id = c.customer_unique_id
+  WHERE EDITDISTANCE(LOWER(c.customer_city), LOWER('Sao Paulo')) <= 2
+  ORDER BY order_count DESC;
+expected_output: |
+  A total of 15,545 orders were placed by customers in Sao Paulo.
+metadata:
+  limit_type: standard_tab_limit
+  intent: tab
+  download_button: False
+  is_capped: False
+  is_editdistance: False

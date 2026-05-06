@@ -1,0 +1,19 @@
+id: FZY-05
+category: Fuzzy Matching
+input: Summarize the average delivery time for customers in 'Rio de Janero' for orders with a 'shippd' status.
+ground_truth_sql: |
+  SELECT AVG(o.actual_delivery_time_days) AS average_delivery_time_days
+  FROM fct_orders o
+  JOIN dim_customers c ON o.customer_unique_id = c.customer_unique_id
+  WHERE EDITDISTANCE(LOWER(o.order_status), LOWER('shipped')) <= 2
+  AND EDITDISTANCE(LOWER(c.customer_city), LOWER('Rio de Janeiro')) <= 2
+  GROUP BY c.customer_city
+  ORDER BY average_delivery_time_days;
+expected_output: |
+  No data was found for orders with a 'shipped' status and customers in 'Rio de Janeiro'.
+metadata:
+  limit_type: standard_tab_limit
+  intent: tab
+  download_button: False
+  is_capped: False
+  is_editdistance: True

@@ -1,8 +1,65 @@
 id: BND-01
 category: Boundaries
 input: List every single order ID and its status in the database.
-ground_truth_sql: ''
-expected_output: '[Paste your perfect output for BND-01 here]'
+ground_truth_sql: |
+  SELECT o.order_id,
+  o.order_status
+  FROM fct_orders AS o
+  ORDER BY o.order_id;
+expected_output: |
+  Showing the first 10 records out of 1000+ total matches found. The full dataset can be downloaded as a CSV below.
+
+  Note: The full results exceeded our safety limit of 1000 records. Please run the following query directly in your database to get all requested records:
+  ```sql
+  SELECT o.order_id,
+        o.order_status
+  FROM fct_orders AS o
+  ORDER BY o.order_id;
+  ```
+  [
+  {
+    "ORDER_ID": "00010242fe8c5a6d1ba2dd792cb16214",
+    "ORDER_STATUS": "delivered"
+  },
+  {
+    "ORDER_ID": "00018f77f2f0320c557190d7a144bdd3",
+    "ORDER_STATUS": "delivered"
+  },
+  {
+    "ORDER_ID": "000229ec398224ef6ca0657da4fc703e",
+    "ORDER_STATUS": "delivered"
+  },
+  {
+    "ORDER_ID": "00024acbcdf0a6daa1e931b038114c75",
+    "ORDER_STATUS": "delivered"
+  },
+  {
+    "ORDER_ID": "00042b26cf59d7ce69dfabb4e55b4fd9",
+    "ORDER_STATUS": "delivered"
+  },
+  {
+    "ORDER_ID": "00048cc3ae777c65dbb7d2a0634bc1ea",
+    "ORDER_STATUS": "delivered"
+  },
+  {
+    "ORDER_ID": "00054e8431b9d7675808bcb819fb4a32",
+    "ORDER_STATUS": "delivered"
+  },
+  {
+    "ORDER_ID": "000576fe39319847cbb9d288c5617fa6",
+    "ORDER_STATUS": "delivered"
+  },
+  {
+    "ORDER_ID": "0005a1a1728c9d785b8e2b08b904576c",
+    "ORDER_STATUS": "delivered"
+  },
+  {
+    "ORDER_ID": "0005f50442cb953dcd1d21e1fb923495",
+    "ORDER_STATUS": "delivered"
+  }
+  ]
 metadata:
   limit_type: safety_limit
   intent: tab
+  download_button: True
+  is_capped: True

@@ -1,8 +1,47 @@
 id: TAB-02
 category: Standard Tab
 input: Show a table with the count of orders for each current order status.
-ground_truth_sql: ''
-expected_output: '[Paste your perfect output for TAB-02 here]'
+ground_truth_sql: |
+  SELECT o.order_status, COUNT(o.order_id) AS order_count
+  FROM fct_orders o
+  GROUP BY o.order_status
+  ORDER BY o.order_status;
+expected_output: |
+  Here are the tabular results you requested.
+  [
+  {
+    "ORDER_STATUS": "approved",
+    "ORDER_COUNT": 2
+  },
+  {
+    "ORDER_STATUS": "canceled",
+    "ORDER_COUNT": 625
+  },
+  {
+    "ORDER_STATUS": "created",
+    "ORDER_COUNT": 5
+  },
+  {
+    "ORDER_STATUS": "delivered",
+    "ORDER_COUNT": 96478
+  },
+  {
+    "ORDER_STATUS": "invoiced",
+    "ORDER_COUNT": 314
+  },
+  {
+    "ORDER_STATUS": "processing",
+    "ORDER_COUNT": 301
+  },
+  {
+    "ORDER_STATUS": "shipped",
+    "ORDER_COUNT": 1107
+  },
+  {
+    "ORDER_STATUS": "unavailable",
+    "ORDER_COUNT": 609
+  }
+  ]
 metadata:
   limit_type: standard_tab_limit
   intent: tab

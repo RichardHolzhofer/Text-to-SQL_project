@@ -170,6 +170,8 @@ def bootstrap_scenarios():
                     "limit_type": item["limit_type"],
                     "intent": item["intent"],
                     "download_button": False,
+                    "is_capped": False,
+                    "is_editdistance": False,
                 },
             }
             with open(file_path, "w", encoding="utf-8") as f:

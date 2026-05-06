@@ -1,8 +1,58 @@
 id: BND-02
 category: Boundaries
-input: Summarize all orders placed in the year 2017.
-ground_truth_sql: ''
-expected_output: '[Paste your perfect output for BND-02 here]'
+input: Summarize the individual order details for all customers in Sao Paulo during 2017, including product and pricing information.
+ground_truth_sql: |
+  SELECT 
+  o.order_id, 
+  oi.product_id, 
+  oi.price, 
+  oi.freight_value, 
+  o.order_purchase_timestamp
+  FROM 
+  fct_orders o
+  JOIN 
+  dim_customers c ON o.customer_unique_id = c.customer_unique_id
+  JOIN 
+  fct_order_items oi ON o.order_id = oi.order_id
+  WHERE 
+  LOWER(c.customer_city) = 'sao paulo'
+  AND o.order_purchase_timestamp >= '2017-01-01' 
+  AND o.order_purchase_timestamp < '2018-01-01'
+  ORDER BY 
+  o.order_id;
+expected_output: |
+  Based on the first 100 records (out of 1000+ total) matching your criteria, here is a summary of individual order details for customers in Sao Paulo during 2017:
+
+  Orders include a variety of products with prices ranging from as low as 5.53 to as high as 610.
+  Freight values for these orders range from 1.8 to 37.54.
+  Orders were placed throughout the year, with timestamps indicating purchases from January to December 2017.
+  Some orders contain multiple items, as indicated by repeated order IDs with different product IDs.
+
+  The full dataset is available for download via the button below.
+
+  Note: The full results exceeded our safety limit of 1000 records. Please run the following query directly in your database to get all requested records:
+  ```sql
+  SELECT 
+      o.order_id, 
+      oi.product_id, 
+      oi.price, 
+      oi.freight_value, 
+      o.order_purchase_timestamp
+  FROM 
+      fct_orders o
+  JOIN 
+      dim_customers c ON o.customer_unique_id = c.customer_unique_id
+  JOIN 
+      fct_order_items oi ON o.order_id = oi.order_id
+  WHERE 
+      LOWER(c.customer_city) = 'sao paulo'
+      AND o.order_purchase_timestamp >= '2017-01-01' 
+      AND o.order_purchase_timestamp < '2018-01-01'
+  ORDER BY 
+      o.order_id;
+  ```
 metadata:
   limit_type: standard_nl_limit
   intent: nl
+  download_button: True
+  is_capped: True

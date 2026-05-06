@@ -16,6 +16,7 @@ models:
         tests:
           - not_null
       - name: customer_state
+        description: "2-letter Brazilian state code (e.g., 'SP' for Sao Paulo, 'RJ' for Rio de Janeiro, 'MG' for Minas Gerais, 'BA' for Bahia)."
         tests:
           - not_null
       - name: customer_zip_code
