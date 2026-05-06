@@ -69,6 +69,9 @@ class TextToSQLGraph:
         workflow.add_node("query_generator_node", self.nodes.generate_sql)
 
         workflow.add_node(
+            "extract_semantic_concept_node", self.nodes.extract_semantic_concept
+        )
+        workflow.add_node(
             "semantic_query_generator_node", self.nodes.semantic_query_generator
         )
         workflow.add_node("validator_node", self.nodes.validate_sql)
@@ -89,11 +92,14 @@ class TextToSQLGraph:
             "router_query_node",
             self._route_after_intent,
             {
-                "semantic": "semantic_query_generator_node",
+                "semantic": "extract_semantic_concept_node",
                 "general": "query_generator_node",
             },
         )
 
+        workflow.add_edge(
+            "extract_semantic_concept_node", "semantic_query_generator_node"
+        )
         workflow.add_edge("query_generator_node", "validator_node")
         workflow.add_edge("semantic_query_generator_node", "validator_node")
 

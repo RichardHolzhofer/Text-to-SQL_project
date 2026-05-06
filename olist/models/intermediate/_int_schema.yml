@@ -111,7 +111,7 @@ models:
       - name: product_category_name_english
         description: >
           Cleaned English category name. Uses translation file where available, 
-          otherwise falls back to the Portuguese name. Formatted in Title Case 
+          otherwise falls back to the Portuguese name. Formatted in lower case 
           without underscores.
         tests:
           - not_null
