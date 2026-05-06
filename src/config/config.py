@@ -6,6 +6,7 @@ import snowflake.connector
 import yaml
 from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
+from langchain_openai import OpenAIEmbeddings
 from langfuse import Langfuse
 from snowflake.connector.connection import SnowflakeConnection
 from supabase import Client, create_client
@@ -61,6 +62,7 @@ class Config:
         # LLM Model settings
         self.smart_model = os.getenv("SMART_LLM_MODEL")
         self.fast_model = os.getenv("FAST_LLM_MODEL")
+        self.embedding_model = os.getenv("EMBEDDING_MODEL")
         self.temperature = float(os.getenv("LLM_TEMPERATURE", 0.0))
 
         # Validation (Optional)
@@ -88,6 +90,7 @@ class Config:
             "SUPABASE_PASSWORD",
             "SMART_LLM_MODEL",
             "FAST_LLM_MODEL",
+            "EMBEDDING_MODEL",
             "LANGFUSE_PUBLIC_KEY",
             "LANGFUSE_SECRET_KEY",
         ]
@@ -218,3 +221,12 @@ class Config:
                 host=self.lf_host,
             )
         return self._langfuse
+
+    def get_embedding_model(self):
+        """Returns a cached instance of the OpenAI embedding model."""
+        if not hasattr(self, "_embedding_model") or self._embedding_model is None:
+            self.logger.info(
+                f"Initializing OpenAI Embedding model: {self.embedding_model}"
+            )
+            self._embedding_model = OpenAIEmbeddings(model=self.embedding_model)
+        return self._embedding_model

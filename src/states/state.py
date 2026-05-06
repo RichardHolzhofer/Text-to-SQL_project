@@ -138,6 +138,10 @@ class SQLGenerator(BaseModel):
         default=None,
         description="A brief warning explaining that EDITDISTANCE was used to find similar records, as exact matches were not found.",
     )
+    search_concept: Optional[str] = Field(
+        default=None,
+        description="The extracted core semantic concept used for vector search.",
+    )
 
 
 ### State for Validator

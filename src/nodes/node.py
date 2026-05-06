@@ -196,6 +196,22 @@ class TextToSQLNodes:
                 f"Generating Semantic SQL query for question: '{state.question}'"
             )
 
+            # Generate search concept for embedding
+            logger.info("Extracting search concept from question...")
+            concept_response = run_prompt(
+                prompt_name="extract_search_concept",
+                variables={"question": state.question},
+                config=self.config,
+                use_fast_llm=True,
+            )
+            search_concept = concept_response.content.strip()
+            logger.info(f"Extracted concept: '{search_concept}'")
+
+            # Generate embedding for the extracted concept
+            logger.info(f"Generating embedding for concept: '{search_concept}'")
+            embedding_model = self.config.get_embedding_model()
+            query_vector = embedding_model.embed_query(search_concept)
+
             # Serialize the schema so the LLM can read it
             schema_json = json.dumps(state.schema.model_dump(), indent=2)
 
@@ -205,6 +221,7 @@ class TextToSQLNodes:
                 variables={
                     "schema_context": schema_json,
                     "question": state.question,
+                    "query_vector": query_vector,
                     "threshold": self.semantic_search_threshold,
                 },
                 config=self.config,
