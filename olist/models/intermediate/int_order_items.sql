@@ -24,7 +24,7 @@ SELECT
     p.product_category_name,
     s.seller_city,
     s.seller_state,
-    INITCAP(COALESCE(
+    LOWER(COALESCE(
         REPLACE(c.product_category_name_english, '_', ' '),
         REPLACE(p.product_category_name, '_', ' ')
     )) AS product_category_name_english

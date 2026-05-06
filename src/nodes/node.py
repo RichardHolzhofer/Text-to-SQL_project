@@ -36,14 +36,15 @@ class TextToSQLNodes:
             self.fast_llm = config.get_fast_llm()
             self.db = SupabaseDB(config, admin=True)
             self.max_retry = 3
-            self.semantic_search_threshold = 0.85
+            self.semantic_search_threshold = 0.6
             self.semantic_tab_limit = 10
             self.semantic_nl_limit = 100
             self.standard_tab_limit = 10
             self.standard_nl_limit = 100
             self.mart_schema_path = "olist/models/marts/_marts_schema.yml"
             self.enhancement_schema_path = "embeddings/_embeddings_schema.yml"
-            self.safety_limit = 1000
+            self.safety_limit = 5000
+            self.review_language = "Portuguese"
             logger.info("TextToSQLNodes initialized using Config LLMs and Supabase.")
         except Exception as e:
             logger.exception("Failed to initialize TextToSQLNodes.")
@@ -187,6 +188,45 @@ class TextToSQLNodes:
             # Default fallback
             return {"router": Router(route="nl")}
 
+    def extract_semantic_concept(self, state: TextToSQLState):
+        """
+        Extracts the search concept from the question and generates its embedding.
+        """
+        try:
+            logger.info(f"Extracting search concept for question: '{state.question}'")
+
+            # 1. Generate search concept for embedding
+            concept_response = run_prompt(
+                prompt_name="extract_search_concept",
+                variables={
+                    "question": state.question,
+                    "target_language": self.review_language,
+                },
+                config=self.config,
+                use_fast_llm=True,
+            )
+            search_concept = concept_response.content.strip()
+            logger.info(f"Extracted concept: '{search_concept}'")
+
+            # 2. Generate embedding for the extracted concept
+            logger.info(f"Generating embedding for concept: '{search_concept}'")
+            embedding_model = self.config.get_embedding_model()
+            query_vector = embedding_model.embed_query(search_concept)
+
+            logger.info(f"Generated embedding of length {len(query_vector)}")
+
+            return {
+                "generated_sql": SQLGenerator(
+                    search_concept=search_concept, query_vector=query_vector
+                )
+            }
+
+        except Exception as e:
+            logger.exception(
+                "Failed to extract semantic concept or generate embedding."
+            )
+            raise NodeException(e)
+
     def semantic_query_generator(self, state: TextToSQLState):
         """
         Generates the specialized vector SQL using the semantic prompt.
@@ -211,6 +251,24 @@ class TextToSQLNodes:
                 chat_history=state.chat_history,
                 output_schema=SQLGenerator,
             )
+
+            # Preserve the search concept and vector from the previous state (if any)
+            if state.generated_sql:
+                logger.info(
+                    f"Preserving semantic context from state. Search concept: {state.generated_sql.search_concept}"
+                )
+                sql_generation_output = sql_generation_output.model_copy(
+                    update={
+                        "search_concept": state.generated_sql.search_concept
+                        or sql_generation_output.search_concept,
+                        "query_vector": state.generated_sql.query_vector
+                        or sql_generation_output.query_vector,
+                    }
+                )
+            else:
+                logger.warning(
+                    "No previous generated_sql found in state to preserve semantic context."
+                )
 
             logger.info("Semantic SQL generation successful.")
             if sql_generation_output.thought_process:
@@ -328,6 +386,20 @@ class TextToSQLNodes:
                 f"Validating SQL via EXPLAIN (Iteration: {state.validator.iteration_count + 1})"
             )
 
+            # Inject the actual vector if the placeholder is present
+            if "[QUERY_VECTOR]" in cleaned_sql:
+                if not state.generated_sql or not state.generated_sql.query_vector:
+                    msg = "SQL contains [QUERY_VECTOR] placeholder, but query_vector is missing from state.generated_sql."
+                    logger.error(msg)
+                    raise ValueError(msg)
+
+                logger.info(
+                    f"Injecting query_vector (length: {len(state.generated_sql.query_vector)}) into SQL for EXPLAIN."
+                )
+                cleaned_sql = cleaned_sql.replace(
+                    "[QUERY_VECTOR]", str(state.generated_sql.query_vector)
+                )
+
             # Execute EXPLAIN in Snowflake
             with self.config.get_snowflake_connection(write_access=False) as conn:
                 with conn.cursor() as cursor:
@@ -379,6 +451,21 @@ class TextToSQLNodes:
                 return {"query_results": None}
 
             sql = state.generated_sql.sql_query
+
+            # Inject the actual vector if the placeholder is present
+            if "[QUERY_VECTOR]" in sql:
+                if not state.generated_sql or not state.generated_sql.query_vector:
+                    msg = "SQL contains [QUERY_VECTOR] placeholder, but query_vector is missing from state.generated_sql."
+                    logger.error(msg)
+                    raise ValueError(msg)
+
+                logger.info(
+                    f"Injecting query_vector (length: {len(state.generated_sql.query_vector)}) into SQL for execution."
+                )
+                sql = sql.replace(
+                    "[QUERY_VECTOR]", str(state.generated_sql.query_vector)
+                )
+
             logger.info("Executing SQL query in Snowflake...")
 
             with self.config.get_snowflake_connection(write_access=False) as conn:

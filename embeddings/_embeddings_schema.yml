@@ -18,5 +18,5 @@ models:
               field: order_id
       - name: review_combined_text_embedding
         description: >
-          768-dimensional vector embedding generated using the 
-          SNOWFLAKE.CORTEX.EMBED_TEXT_768 ('snowflake-arctic-embed-m-v1.5') model.
+          1536-dimensional vector embedding generated using the 
+          OpenAI 'text-embedding-3-small' model.
