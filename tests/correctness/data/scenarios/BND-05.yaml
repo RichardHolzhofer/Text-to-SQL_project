@@ -1,8 +1,95 @@
 id: BND-05
 category: Boundaries
 input: Give me a table of all reviews that mention 'delivery'.
-ground_truth_sql: ''
-expected_output: '[Paste your perfect output for BND-05 here]'
+ground_truth_sql: |
+  WITH semantic_matches AS (
+      SELECT 
+          r.review_score,
+          r.review_comment_message,
+          VECTOR_COSINE_SIMILARITY(
+              e.review_combined_text_embedding, 
+              CAST([QUERY_VECTOR] AS VECTOR(FLOAT, 1536))
+          ) as similarity_score
+      FROM dim_reviews r
+      JOIN dim_review_embeddings e ON r.order_id = e.order_id
+      WHERE r.review_comment_message IS NOT NULL
+  )
+  SELECT 
+      review_score, 
+      review_comment_message
+  FROM semantic_matches
+  WHERE similarity_score >= 0.4
+  ORDER BY similarity_score DESC;
+expected_output: |
+  Showing the first 10 records out of 1000+ total matches found. The full dataset can be downloaded as a CSV below.
+
+  ---
+  Note: The full results exceeded our safety limit of 1000 records. Please run the following query directly in your database to get all requested records:
+  ```sql
+  WITH semantic_matches AS (
+      SELECT 
+          r.review_score,
+          r.review_comment_message,
+          VECTOR_COSINE_SIMILARITY(
+              e.review_combined_text_embedding, 
+              CAST([QUERY_VECTOR] AS VECTOR(FLOAT, 1536))
+          ) as similarity_score
+      FROM dim_reviews r
+      JOIN dim_review_embeddings e ON r.order_id = e.order_id
+      WHERE r.review_comment_message IS NOT NULL
+  )
+  SELECT 
+      review_score, 
+      review_comment_message
+  FROM semantic_matches
+  WHERE similarity_score >= 0.4
+  ORDER BY similarity_score DESC;
+  ```
+
+  [
+  {
+    "REVIEW_SCORE": 5,
+    "REVIEW_COMMENT_MESSAGE": "Entrega pontual"
+  },
+  {
+    "REVIEW_SCORE": 4,
+    "REVIEW_COMMENT_MESSAGE": "entrega rapida"
+  },
+  {
+    "REVIEW_SCORE": 5,
+    "REVIEW_COMMENT_MESSAGE": "entrega rapida"
+  },
+  {
+    "REVIEW_SCORE": 4,
+    "REVIEW_COMMENT_MESSAGE": "entrega rapida"
+  },
+  {
+    "REVIEW_SCORE": 5,
+    "REVIEW_COMMENT_MESSAGE": "entrega rapida"
+  },
+  {
+    "REVIEW_SCORE": 4,
+    "REVIEW_COMMENT_MESSAGE": "entrega rapida"
+  },
+  {
+    "REVIEW_SCORE": 5,
+    "REVIEW_COMMENT_MESSAGE": "Entrega top"
+  },
+  {
+    "REVIEW_SCORE": 5,
+    "REVIEW_COMMENT_MESSAGE": "Entrega excelente"
+  },
+  {
+    "REVIEW_SCORE": 4,
+    "REVIEW_COMMENT_MESSAGE": "entregue, td ok"
+  },
+  {
+    "REVIEW_SCORE": 4,
+    "REVIEW_COMMENT_MESSAGE": "Entrega como combinado..."
+  }
+  ]
 metadata:
   limit_type: semantic_tab_limit
   intent: semantic_tab
+  download_button: True
+  is_capped: True
