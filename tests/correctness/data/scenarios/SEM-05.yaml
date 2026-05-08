@@ -1,8 +1,60 @@
 id: SEM-05
 category: Semantic
 input: Find and summarize reviews that mention issues with 'customer service' or 'refunds'.
-ground_truth_sql: ''
-expected_output: '[Paste your perfect output for SEM-05 here]'
+ground_truth_sql: |
+  WITH semantic_matches AS (
+      SELECT 
+          r.review_score,
+          r.review_comment_message,
+          VECTOR_COSINE_SIMILARITY(
+              e.review_combined_text_embedding, 
+              CAST([QUERY_VECTOR] AS VECTOR(FLOAT, 1536))
+          ) as similarity_score
+      FROM dim_reviews r
+      JOIN dim_review_embeddings e ON r.order_id = e.order_id
+      WHERE r.review_comment_message IS NOT NULL
+      AND r.review_score <= 3
+  )
+  SELECT 
+      review_score, 
+      review_comment_message
+  FROM semantic_matches
+  WHERE similarity_score >= 0.4
+  ORDER BY similarity_score DESC;
+expected_output: |
+  Based on the analysis of the top 100 most relevant reviews (out of 1000+ total), here is a summary of the issues related to 'customer service' and 'refunds'. The full dataset can be downloaded for a more comprehensive view.
+
+  1. Refund Issues: The majority of reviews express dissatisfaction with the refund process. Many customers reported not receiving their refunds after product delivery issues or cancellations. There are frequent mentions of requests for refunds being ignored or delayed, causing significant frustration among customers.
+
+  2. Customer Service Complaints: A significant number of reviews highlight poor customer service experiences. Customers often describe the service as unresponsive, with difficulties in reaching support through phone or email. There are reports of unhelpful or dismissive interactions with customer service representatives, which exacerbates the frustration over unresolved issues.
+
+  3. Delivery Problems: Many reviews also mention problems with product delivery, such as receiving incorrect items or not receiving products at all. These delivery issues are often linked to the complaints about refunds and customer service, as customers struggle to get resolutions or compensations for these problems.
+
+  Overall, the reviews indicate a prevalent dissatisfaction with both the refund process and customer service, with many customers feeling neglected and unsupported in resolving their issues.
+
+  ---
+  Note: The full results exceeded our safety limit of 1000 records. Please run the following query directly in your database to get all requested records:
+  ```sql
+  WITH semantic_matches AS (
+      SELECT 
+          r.review_score,
+          r.review_comment_message,
+          VECTOR_COSINE_SIMILARITY(
+              e.review_combined_text_embedding, 
+              CAST([QUERY_VECTOR] AS VECTOR(FLOAT, 1536))
+          ) as similarity_score
+      FROM dim_reviews r
+      JOIN dim_review_embeddings e ON r.order_id = e.order_id
+      WHERE r.review_comment_message IS NOT NULL
+      AND r.review_score <= 3
+  )
+  SELECT 
+      review_score, 
+      review_comment_message
+  FROM semantic_matches
+  WHERE similarity_score >= 0.4
+  ORDER BY similarity_score DESC;
+  ```
 metadata:
   limit_type: semantic_nl_limit
   intent: semantic_nl

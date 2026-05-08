@@ -137,7 +137,7 @@ class SQLGenerator(BaseModel):
     )
     fuzzy_match_warning: Optional[str] = Field(
         default=None,
-        description="A brief warning explaining that EDITDISTANCE was used to find similar records, as exact matches were not found.",
+        description="A brief warning explaining that EDITDISTANCE was used to find similar records (Standard SQL only). Do not use this for semantic/vector search limits.",
     )
     search_concept: Optional[str] = Field(
         default=None,

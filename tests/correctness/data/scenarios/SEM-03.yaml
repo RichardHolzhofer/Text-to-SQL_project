@@ -2,8 +2,51 @@ id: SEM-03
 category: Semantic
 input: Give me a table of 5 reviews that specifically mention 'damaged' or 'broken'
   items.
-ground_truth_sql: ''
-expected_output: '[Paste your perfect output for SEM-03 here]'
+ground_truth_sql: |
+  WITH semantic_matches AS (
+  SELECT 
+  r.review_score,
+  r.review_comment_message,
+  VECTOR_COSINE_SIMILARITY(
+  e.review_combined_text_embedding, 
+  CAST([QUERY_VECTOR] AS VECTOR(FLOAT, 1536))
+  ) as similarity_score
+  FROM dim_reviews r
+  JOIN dim_review_embeddings e ON r.order_id = e.order_id
+  WHERE r.review_comment_message IS NOT NULL
+  AND r.review_score <= 3
+  )
+  SELECT 
+  review_score, 
+  review_comment_message
+  FROM semantic_matches
+  WHERE similarity_score >= 0.4
+  ORDER BY similarity_score DESC
+  LIMIT 5;
+expected_output: |
+  Here are the tabular results you requested.
+  [
+  {
+    "REVIEW_SCORE": 1,
+    "REVIEW_COMMENT_MESSAGE": "Produto avariado, quebrado"
+  },
+  {
+    "REVIEW_SCORE": 1,
+    "REVIEW_COMMENT_MESSAGE": "chegou quebrado"
+  },
+  {
+    "REVIEW_SCORE": 1,
+    "REVIEW_COMMENT_MESSAGE": "Veio quebrado"
+  },
+  {
+    "REVIEW_SCORE": 1,
+    "REVIEW_COMMENT_MESSAGE": "Produto que sinais de uso , manchado , marcado e quebrado "
+  },
+  {
+    "REVIEW_SCORE": 2,
+    "REVIEW_COMMENT_MESSAGE": "Um dos cubos veio danificado(tipo amassado)"
+  }
+  ]
 metadata:
   limit_type: semantic_tab_limit
   intent: semantic_tab

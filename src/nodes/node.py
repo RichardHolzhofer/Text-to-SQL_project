@@ -36,14 +36,14 @@ class TextToSQLNodes:
             self.fast_llm = config.get_fast_llm()
             self.db = SupabaseDB(config, admin=True)
             self.max_retry = 3
-            self.semantic_search_threshold = 0.6
+            self.semantic_search_threshold = 0.4
             self.semantic_tab_limit = 10
             self.semantic_nl_limit = 100
             self.standard_tab_limit = 10
             self.standard_nl_limit = 100
             self.mart_schema_path = "olist/models/marts/_marts_schema.yml"
             self.enhancement_schema_path = "embeddings/_embeddings_schema.yml"
-            self.safety_limit = 5000
+            self.safety_limit = 1000
             self.review_language = "Portuguese"
             logger.info("TextToSQLNodes initialized using Config LLMs and Supabase.")
         except Exception as e:

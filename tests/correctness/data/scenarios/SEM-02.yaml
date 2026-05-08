@@ -1,8 +1,43 @@
 id: SEM-02
 category: Semantic
 input: Summarize the positive feedback specifically for 'electronics' products.
-ground_truth_sql: ''
-expected_output: '[Paste your perfect output for SEM-02 here]'
+ground_truth_sql: |
+  WITH semantic_matches AS (
+  SELECT 
+  r.review_score,
+  r.review_comment_message,
+  VECTOR_COSINE_SIMILARITY(
+  e.review_combined_text_embedding, 
+  CAST([QUERY_VECTOR] AS VECTOR(FLOAT, 1536))
+  ) as similarity_score
+  FROM dim_reviews r
+  JOIN dim_review_embeddings e ON r.order_id = e.order_id
+  JOIN fct_order_items oi ON r.order_id = oi.order_id
+  WHERE r.review_comment_message IS NOT NULL
+  AND r.review_score > 3
+  AND oi.product_category = 'electronics'
+  )
+  SELECT 
+  review_score, 
+  review_comment_message
+  FROM semantic_matches
+  WHERE similarity_score >= 0.4
+  ORDER BY similarity_score DESC;
+expected_output: |
+  Based on the analysis of the top 100 most relevant reviews (out of 229 total), here is a summary of the positive feedback for electronics products. The full dataset can be downloaded for more detailed insights.
+
+  1. Product Quality and Functionality: The majority of reviews highlight satisfaction with the quality and functionality of the electronics products. Customers frequently mention that the products meet or exceed their expectations, with specific praise for items like remote controls and other electronic devices functioning as described.
+
+  2. Delivery and Packaging: Many reviews commend the prompt delivery, often noting that products arrived before the expected date. Customers appreciate the careful packaging, which ensures that items arrive in perfect condition.
+
+  3. Customer Service: Positive feedback is also directed towards customer service, with several reviews mentioning excellent communication and support from sellers. Customers feel valued and well-attended to, which enhances their overall shopping experience.
+
+  4. Value for Money: A significant number of reviews express satisfaction with the value for money offered by these electronics products. Customers feel that the products are worth the price, and some even mention receiving additional items, like batteries, as a bonus.
+
+  5. Reliability and Trust: Trust in the marketplace and sellers is a recurring theme. Customers express confidence in the reliability of the sellers and the accuracy of product descriptions, which encourages repeat purchases and recommendations to others.
+
+  Overall, the positive feedback for electronics products is centered around high product quality, efficient delivery, excellent customer service, good value for money, and a trustworthy shopping experience.
 metadata:
   limit_type: semantic_nl_limit
   intent: semantic_nl
+  download_button: True

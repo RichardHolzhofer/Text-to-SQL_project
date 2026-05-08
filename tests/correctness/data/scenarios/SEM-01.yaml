@@ -1,8 +1,66 @@
 id: SEM-01
 category: Semantic
 input: What are the most common complaints customers have about shipping and delivery?
-ground_truth_sql: ''
-expected_output: '[Paste your perfect output for SEM-01 here]'
+ground_truth_sql: |
+  WITH semantic_matches AS (
+  SELECT 
+  r.review_score,
+  r.review_comment_message,
+  VECTOR_COSINE_SIMILARITY(
+  e.review_combined_text_embedding, 
+  CAST([QUERY_VECTOR] AS VECTOR(FLOAT, 1536))
+  ) as similarity_score
+  FROM dim_reviews r
+  JOIN dim_review_embeddings e ON r.order_id = e.order_id
+  WHERE r.review_comment_message IS NOT NULL
+  AND r.review_score <= 3
+  )
+  SELECT 
+  review_score, 
+  review_comment_message
+  FROM semantic_matches
+  WHERE similarity_score >= 0.4
+  ORDER BY similarity_score DESC;
+expected_output: |
+  Based on the analysis of the top 100 most relevant reviews (out of 1000+ total), here are the common complaints customers have about shipping and delivery. The full dataset can be downloaded for further insights.
+
+  1. Delayed Deliveries: The majority of reviews express frustration with delays in delivery. Many customers mention that their orders did not arrive within the expected timeframe, leading to dissatisfaction and repeated follow-ups with customer service.
+
+  2. Non-Delivery: A significant number of reviews report issues where products were marked as delivered but were not actually received by the customers. This has led to confusion and the need for customers to contact support to resolve the discrepancies.
+
+  3. Incomplete Deliveries: Several customers have complained about receiving incomplete orders, where only part of their purchase was delivered. This has caused inconvenience and required additional communication with the seller to rectify the situation.
+
+  4. Communication Issues: There are numerous complaints about poor communication regarding delivery status. Customers have expressed frustration over not receiving timely updates or responses to their inquiries about their shipments.
+
+  5. Incorrect Deliveries: Some reviews highlight instances where the wrong product was delivered, necessitating returns or exchanges, which further delayed the receipt of the correct items.
+
+  6. Issues with Delivery Services: A few reviews mention dissatisfaction with the delivery service itself, particularly when products were not delivered to the customer's residence, requiring them to pick up items from a postal office despite having paid for home delivery.
+
+  These themes indicate that the primary areas of concern for customers revolve around timeliness, accuracy, and communication in the delivery process.
+
+  ---
+  Note: The full results exceeded our safety limit of 1000 records. Please run the following query directly in your database to get all requested records:
+  ```sql
+  WITH semantic_matches AS (
+      SELECT 
+          r.review_score,
+          r.review_comment_message,
+          VECTOR_COSINE_SIMILARITY(
+              e.review_combined_text_embedding, 
+              CAST([QUERY_VECTOR] AS VECTOR(FLOAT, 1536))
+          ) as similarity_score
+      FROM dim_reviews r
+      JOIN dim_review_embeddings e ON r.order_id = e.order_id
+      WHERE r.review_comment_message IS NOT NULL
+      AND r.review_score <= 3
+  )
+  SELECT 
+      review_score, 
+      review_comment_message
+  FROM semantic_matches
+  WHERE similarity_score >= 0.4
+  ORDER BY similarity_score DESC;
+  ```
 metadata:
   limit_type: semantic_nl_limit
   intent: semantic_nl
