@@ -215,6 +215,7 @@ force_tool_call.ipynb
 
 # Deepeval
 .deepeval/
+deepeval_test_results/
 
 # Snowflake
 snowflake.txt

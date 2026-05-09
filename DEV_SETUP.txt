@@ -45,3 +45,7 @@ python sync_prompts.py --push
 
 # Pull cloud changes to local YAMLs
 python sync_prompts.py --pull
+
+
+
+export DEEPEVAL_RESULTS_FOLDER="./deepeval_test_results"

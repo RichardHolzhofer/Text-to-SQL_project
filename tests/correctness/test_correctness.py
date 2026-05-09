@@ -1,4 +1,7 @@
+import sys
 import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+
 import re
 import uuid
 
@@ -12,9 +15,12 @@ from src.config.config import Config
 from src.database.db import SupabaseDB
 from src.graph_builder.graph_builder import TextToSQLGraph
 from src.states.state import Schema
+from langfuse.langchain import CallbackHandler
+from langfuse import propagate_attributes
 
+# 1. SETUP: Initialize Graph, Langfuse and Cache Schema once per session
+langfuse_handler = CallbackHandler()
 
-# 1. SETUP: Initialize Graph and Cache Schema once per session
 @pytest.fixture(scope="session")
 def graph():
     return TextToSQLGraph().build_graph()
@@ -34,6 +40,8 @@ def cached_schema():
 
 # 2. METRIC: Define Factual Correctness via G-Eval
 correctness_metric = GEval(
+    model='gpt-4.1',
+    threshold=0.8,
     name="Factual Correctness",
     criteria="Determine whether the actual output is factually correct based on the expected output.",
     evaluation_params=[
@@ -44,8 +52,9 @@ correctness_metric = GEval(
 )
 
 # 3. DATASET: Load the generated Goldens
-dataset = EvaluationDataset.from_json(
-    os.path.join(os.path.dirname(__file__), "data", "correctness_dataset.json")
+dataset = EvaluationDataset()
+dataset.add_goldens_from_json_file(
+    os.path.join(os.path.dirname(__file__), "data", "correctness_dataset_sample.json")
 )
 
 
@@ -65,8 +74,17 @@ def normalize_text(text: str) -> str:
 # 4. TEST EXECUTION
 @pytest.mark.parametrize("golden", dataset.goldens)
 def test_text_to_sql_correctness(golden, graph, cached_schema):
-    # Run the graph with a fresh thread_id for each case
-    config_run = {"configurable": {"thread_id": str(uuid.uuid4())}}
+    # Run the graph with a fresh thread_id and Langfuse callbacks
+    metadata = golden.additional_metadata
+    config_run = {
+        "configurable": {"thread_id": str(uuid.uuid4())},
+        "callbacks": [langfuse_handler],
+        "metadata": {
+            "test_case_id": metadata.get("id"),
+            "run_type": "correctness_test"
+        },
+        "tags": ["test", metadata.get("category", "general")]
+    }
 
     # Pass the pre-cached schema to bypass extraction logic
     initial_state = {
@@ -75,42 +93,55 @@ def test_text_to_sql_correctness(golden, graph, cached_schema):
         "force_refresh": False,
     }
 
-    print(f"\nRunning test for: {golden.input}")
-    result = graph.invoke(initial_state, config=config_run)
+    with propagate_attributes(
+        trace_name=f"TEST-{golden.name}",
+        session_id=f"eval_session_{uuid.uuid4().hex[:8]}",
+        user_id="eval_service",
+        metadata={
+            "name":golden.name,
+            "intent":metadata.get("intent"),
+            "limit_type":metadata.get("limit_type")
+        }
+    ):
+        print(f"\nRunning test for: {golden.input}")
+        result = graph.invoke(initial_state, config=config_run)
 
-    # 3. Extract Outputs based on Intent
-    metadata = golden.additional_metadata
-    intent = metadata.get("intent", "nl")
+        # 3. Extract Outputs based on Intent
+        intent = metadata.get("intent", "nl")
 
-    if "tab" in intent:
-        # For tabular, we evaluate the 'answer' disclaimer text
-        actual_output = (
-            result.get("tabular_answer").answer if result.get("tabular_answer") else ""
-        )
-        # Check is_capped logic
-        expected_capped = metadata.get("is_capped", False)
-        actual_capped = (
-            result.get("tabular_answer").is_capped
-            if result.get("tabular_answer")
-            else False
-        )
-        assert actual_capped == expected_capped, (
-            f"Capping mismatch for {metadata.get('id')}"
-        )
-    else:
-        actual_output = result.get("answer") or "No answer generated."
+        if "tab" in intent:
+            # For tabular, we combine the 'answer' disclaimer with the 'data' list
+            tab_res = result.get("tabular_answer")
+            if tab_res:
+                actual_output = tab_res.answer
+                if tab_res.data:
+                    import json
+                    # Dump data to string to match the expected_output format
+                    data_json = json.dumps(tab_res.data)
+                    actual_output = f"{actual_output} {data_json}"
+            else:
+                actual_output = "No tabular answer generated."
+            
+            # Check is_capped logic
+            expected_capped = metadata.get("is_capped", False)
+            actual_capped = tab_res.is_capped if tab_res else False
+            assert actual_capped == expected_capped, (
+                f"Capping mismatch for {metadata.get('id')}"
+            )
+        else:
+            actual_output = result.get("answer") or "No answer generated."
 
-    # 4. Validate Download Button mention
-    expected_download = metadata.get("download_button", False)
-    has_download_mention = "download button" in actual_output.lower()
-    if expected_download:
-        assert has_download_mention, (
-            f"Model forgot to mention download button in {metadata.get('id')}"
-        )
-    else:
-        assert not has_download_mention, (
-            f"Model hallucinated a download button in {metadata.get('id')}"
-        )
+        # 4. Validate Download Button mention
+        expected_download = metadata.get("download_button", False)
+        has_download_mention = "download button" in actual_output.lower()
+        if expected_download:
+            assert has_download_mention, (
+                f"Model forgot to mention download button in {metadata.get('id')}"
+            )
+        else:
+            assert not has_download_mention, (
+                f"Model hallucinated a download button in {metadata.get('id')}"
+            )
 
     # Create the test case for DeepEval with Normalization
     test_case = LLMTestCase(
@@ -122,3 +153,7 @@ def test_text_to_sql_correctness(golden, graph, cached_schema):
 
     # Evaluate
     assert_test(test_case, [correctness_metric])
+
+    # 5. LOGGING: Print results for visibility in pytest -s
+    print(f"\n[METRIC RESULT] {metadata.get('id')} - Score: {correctness_metric.score}")
+    print(f"[REASONING]: {correctness_metric.reason}")

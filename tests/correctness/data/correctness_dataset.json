@@ -63,6 +63,48 @@
         "custom_column_key_values": null
     },
     {
+        "input": "Summarize all reviews that mention the word 'good'.",
+        "actual_output": null,
+        "expected_output": "Based on the analysis of the top 100 most relevant reviews (out of 339 total), here is a summary of the reviews mentioning the word 'good'. The full dataset can be downloaded for further analysis.\n\n1. Product Quality: The majority of reviews highlight the product quality positively, often using terms like \"produto bom\" (good product) and \"muito bom\" (very good). Customers frequently express satisfaction with the product meeting their expectations.\n\n2. Recommendations: A significant number of reviews include recommendations, with many customers stating \"recomendo\" (I recommend) alongside their positive comments about the product's quality. This suggests a strong word-of-mouth endorsement among buyers.\n\n3. Overall Experience: Several reviews mention a \"boa compra\" (good purchase) or \"ótima compra\" (great purchase), indicating that customers are generally pleased with their buying experience. This includes aspects like the reliability of the product and the service received.\n\n4. Delivery and Service: While not as prevalent, there are mentions of \"entrega boa\" (good delivery), suggesting that some customers are satisfied with the delivery process, although this is not a dominant theme.\n\n5. Trust and Reliability: Some reviews emphasize the trustworthiness of the product and the seller, using terms like \"confiável\" (reliable), which adds to the overall positive sentiment.\n\nOverall, the sentiment in these reviews is predominantly positive, with a strong emphasis on product quality and customer satisfaction.\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": "BND-04",
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "category": "Boundaries",
+            "ground_truth_sql": "WITH semantic_matches AS (\n    SELECT \n        r.review_score,\n        r.review_comment_message,\n        VECTOR_COSINE_SIMILARITY(\n            e.review_combined_text_embedding, \n            CAST([QUERY_VECTOR] AS VECTOR(FLOAT, 1536))\n        ) as similarity_score\n    FROM dim_reviews r\n    JOIN dim_review_embeddings e ON r.order_id = e.order_id\n    WHERE r.review_comment_message IS NOT NULL\n)\nSELECT \n    review_score, \n    review_comment_message\nFROM semantic_matches\nWHERE similarity_score >= 0.4\nORDER BY similarity_score DESC;\n",
+            "limit_type": "semantic_nl_limit",
+            "intent": "semantic_nl",
+            "download_button": true,
+            "is_capped": false
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "Give me a table of all reviews that mention 'delivery'.",
+        "actual_output": null,
+        "expected_output": "Showing the first 10 records out of 1000+ total matches found. The full dataset can be downloaded as a CSV below.\n\n---\nNote: The full results exceeded our safety limit of 1000 records. Please run the following query directly in your database to get all requested records:\n```sql\nWITH semantic_matches AS (\n    SELECT \n        r.review_score,\n        r.review_comment_message,\n        VECTOR_COSINE_SIMILARITY(\n            e.review_combined_text_embedding, \n            CAST([QUERY_VECTOR] AS VECTOR(FLOAT, 1536))\n        ) as similarity_score\n    FROM dim_reviews r\n    JOIN dim_review_embeddings e ON r.order_id = e.order_id\n    WHERE r.review_comment_message IS NOT NULL\n)\nSELECT \n    review_score, \n    review_comment_message\nFROM semantic_matches\nWHERE similarity_score >= 0.4\nORDER BY similarity_score DESC;\n```\n\n[\n{\n  \"REVIEW_SCORE\": 5,\n  \"REVIEW_COMMENT_MESSAGE\": \"Entrega pontual\"\n},\n{\n  \"REVIEW_SCORE\": 4,\n  \"REVIEW_COMMENT_MESSAGE\": \"entrega rapida\"\n},\n{\n  \"REVIEW_SCORE\": 5,\n  \"REVIEW_COMMENT_MESSAGE\": \"entrega rapida\"\n},\n{\n  \"REVIEW_SCORE\": 4,\n  \"REVIEW_COMMENT_MESSAGE\": \"entrega rapida\"\n},\n{\n  \"REVIEW_SCORE\": 5,\n  \"REVIEW_COMMENT_MESSAGE\": \"entrega rapida\"\n},\n{\n  \"REVIEW_SCORE\": 4,\n  \"REVIEW_COMMENT_MESSAGE\": \"entrega rapida\"\n},\n{\n  \"REVIEW_SCORE\": 5,\n  \"REVIEW_COMMENT_MESSAGE\": \"Entrega top\"\n},\n{\n  \"REVIEW_SCORE\": 5,\n  \"REVIEW_COMMENT_MESSAGE\": \"Entrega excelente\"\n},\n{\n  \"REVIEW_SCORE\": 4,\n  \"REVIEW_COMMENT_MESSAGE\": \"entregue, td ok\"\n},\n{\n  \"REVIEW_SCORE\": 4,\n  \"REVIEW_COMMENT_MESSAGE\": \"Entrega como combinado...\"\n}\n]\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": "BND-05",
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "category": "Boundaries",
+            "ground_truth_sql": "WITH semantic_matches AS (\n    SELECT \n        r.review_score,\n        r.review_comment_message,\n        VECTOR_COSINE_SIMILARITY(\n            e.review_combined_text_embedding, \n            CAST([QUERY_VECTOR] AS VECTOR(FLOAT, 1536))\n        ) as similarity_score\n    FROM dim_reviews r\n    JOIN dim_review_embeddings e ON r.order_id = e.order_id\n    WHERE r.review_comment_message IS NOT NULL\n)\nSELECT \n    review_score, \n    review_comment_message\nFROM semantic_matches\nWHERE similarity_score >= 0.4\nORDER BY similarity_score DESC;\n",
+            "limit_type": "semantic_tab_limit",
+            "intent": "semantic_tab",
+            "download_button": true,
+            "is_capped": true
+        },
+        "custom_column_key_values": null
+    },
+    {
         "input": "How many orders were placed by customers in Sao Palo?",
         "actual_output": null,
         "expected_output": "A total of 15,545 orders were placed by customers in Sao Paulo.\n",
@@ -427,9 +469,9 @@
         "custom_column_key_values": null
     },
     {
-        "input": "List the top 3 cities based on total revenue generated by 'returning customers' who purchased items in the 'watches gifts' category.",
+        "input": "List the top 3 cities based on total revenue generated from items sold in the 'watches gifts' category to 'returning customers'.",
         "actual_output": null,
-        "expected_output": "Here are the tabular results you requested.\n[\n{\n  \"CITY\": \"sao paulo\",\n  \"TOTAL_REVENUE\": 10018.25\n},\n{\n  \"CITY\": \"rio de janeiro\",\n  \"TOTAL_REVENUE\": 4676.01\n},\n{\n  \"CITY\": \"duque de caxias\",\n  \"TOTAL_REVENUE\": 3371.79\n}\n]\n",
+        "expected_output": "Here are the tabular results you requested.\n[\n{\n  \"CITY\": \"sao paulo\",\n  \"TOTAL_REVENUE\": 8600.40\n},\n{\n  \"CITY\": \"rio de janeiro\",\n  \"TOTAL_REVENUE\": 4117.80\n},\n{\n  \"CITY\": \"porto alegre\",\n  \"TOTAL_REVENUE\": 1885.80\n}\n]\n",
         "retrieval_context": null,
         "context": null,
         "name": "TAB-04",
@@ -439,7 +481,7 @@
         "expected_tools": null,
         "additional_metadata": {
             "category": "Standard Tab",
-            "ground_truth_sql": "SELECT \nLOWER(dc.customer_city) AS city, \nSUM(fo.total_order_value) AS total_revenue\nFROM \ndim_customers dc\nJOIN \nfct_orders fo ON dc.customer_unique_id = fo.customer_unique_id\nJOIN \nfct_order_items foi ON fo.order_id = foi.order_id\nWHERE \ndc.is_returning_customer = 1\nAND LOWER(foi.product_category) = 'watches gifts'\nGROUP BY \nLOWER(dc.customer_city)\nORDER BY \ntotal_revenue DESC\nLIMIT 3;\n",
+            "ground_truth_sql": "SELECT \n    LOWER(dc.customer_city) AS city, \n    SUM(foi.price) AS total_revenue\nFROM \n    dim_customers dc\nJOIN \n    fct_orders fo ON dc.customer_unique_id = fo.customer_unique_id\nJOIN \n    fct_order_items foi ON fo.order_id = foi.order_id\nWHERE \n    dc.is_returning_customer = 1\n    AND LOWER(foi.product_category) = 'watches gifts'\nGROUP BY \n    LOWER(dc.customer_city)\nORDER BY \n    total_revenue DESC\nLIMIT 3;\n",
             "limit_type": "standard_tab_limit",
             "intent": "tab"
         },

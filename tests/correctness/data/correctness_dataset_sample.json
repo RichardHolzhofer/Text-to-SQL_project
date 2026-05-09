@@ -1,0 +1,40 @@
+[
+        {
+        "input": "List the top 3 cities based on total revenue generated from items sold in the 'watches gifts' category to 'returning customers'.",
+        "actual_output": null,
+        "expected_output": "Here are the tabular results you requested.\n[\n{\n  \"CITY\": \"sao paulo\",\n  \"TOTAL_REVENUE\": 8600.40\n},\n{\n  \"CITY\": \"rio de janeiro\",\n  \"TOTAL_REVENUE\": 4117.80\n},\n{\n  \"CITY\": \"porto alegre\",\n  \"TOTAL_REVENUE\": 1885.80\n}\n]\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": "TAB-04",
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "category": "Standard Tab",
+            "ground_truth_sql": "SELECT \n    LOWER(dc.customer_city) AS city, \n    SUM(foi.price) AS total_revenue\nFROM \n    dim_customers dc\nJOIN \n    fct_orders fo ON dc.customer_unique_id = fo.customer_unique_id\nJOIN \n    fct_order_items foi ON fo.order_id = foi.order_id\nWHERE \n    dc.is_returning_customer = 1\n    AND LOWER(foi.product_category) = 'watches gifts'\nGROUP BY \n    LOWER(dc.customer_city)\nORDER BY \n    total_revenue DESC\nLIMIT 3;\n",
+            "limit_type": "standard_tab_limit",
+            "intent": "tab"
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "Show a comparison table of the average review score for orders that used a voucher versus those that didn't, for the top 5 states with the most orders.",
+        "actual_output": null,
+        "expected_output": "Here are the tabular results you requested.\n[\n{\n  \"CUSTOMER_STATE\": \"mg\",\n  \"HAS_VOUCHER_PAYMENT\": 0,\n  \"AVERAGE_REVIEW_SCORE\": 4.123381262838\n},\n{\n  \"CUSTOMER_STATE\": \"mg\",\n  \"HAS_VOUCHER_PAYMENT\": 1,\n  \"AVERAGE_REVIEW_SCORE\": 4.047945205479\n},\n{\n  \"CUSTOMER_STATE\": \"pr\",\n  \"HAS_VOUCHER_PAYMENT\": 0,\n  \"AVERAGE_REVIEW_SCORE\": 4.167973586463\n},\n{\n  \"CUSTOMER_STATE\": \"pr\",\n  \"HAS_VOUCHER_PAYMENT\": 1,\n  \"AVERAGE_REVIEW_SCORE\": 4.185929648241\n},\n{\n  \"CUSTOMER_STATE\": \"rj\",\n  \"HAS_VOUCHER_PAYMENT\": 0,\n  \"AVERAGE_REVIEW_SCORE\": 3.857578220236\n},\n{\n  \"CUSTOMER_STATE\": \"rj\",\n  \"HAS_VOUCHER_PAYMENT\": 1,\n  \"AVERAGE_REVIEW_SCORE\": 3.810481413163\n},\n{\n  \"CUSTOMER_STATE\": \"rs\",\n  \"HAS_VOUCHER_PAYMENT\": 0,\n  \"AVERAGE_REVIEW_SCORE\": 4.124267070172\n},\n{\n  \"CUSTOMER_STATE\": \"rs\",\n  \"HAS_VOUCHER_PAYMENT\": 1,\n  \"AVERAGE_REVIEW_SCORE\": 4.184357541899\n},\n{\n  \"CUSTOMER_STATE\": \"sp\",\n  \"HAS_VOUCHER_PAYMENT\": 0,\n  \"AVERAGE_REVIEW_SCORE\": 4.164329597335\n},\n{\n  \"CUSTOMER_STATE\": \"sp\",\n  \"HAS_VOUCHER_PAYMENT\": 1,\n  \"AVERAGE_REVIEW_SCORE\": 4.070175438596\n}\n]\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": "TAB-05",
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "category": "Standard Tab",
+            "ground_truth_sql": "WITH top_states AS (\nSELECT customer_state, COUNT(order_id) AS order_count\nFROM fct_orders\nGROUP BY customer_state\nORDER BY order_count DESC\nLIMIT 5\n)\nSELECT \no.customer_state,\no.has_voucher_payment,\nAVG(o.review_score) AS average_review_score\nFROM fct_orders o\nJOIN top_states ts ON o.customer_state = ts.customer_state\nGROUP BY o.customer_state, o.has_voucher_payment\nORDER BY o.customer_state, o.has_voucher_payment;\n",
+            "limit_type": "standard_tab_limit",
+            "intent": "tab"
+        },
+        "custom_column_key_values": null
+    }
+]
