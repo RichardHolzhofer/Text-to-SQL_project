@@ -15,6 +15,10 @@ sellers AS (
 )
 
 SELECT
+    MD5(CONCAT(
+        COALESCE(CAST(oi.order_id AS STRING), '_null_'),
+        COALESCE(CAST(oi.order_item_id AS STRING), '_null_')
+    )) AS order_item_pk,
     oi.order_id,
     oi.order_item_id,
     oi.product_id,

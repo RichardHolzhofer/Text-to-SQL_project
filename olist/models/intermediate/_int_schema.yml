@@ -80,8 +80,13 @@ models:
     description: >
       Enriched order items table. Joins raw items with product categories 
       (translated to English) and seller location data. 
-      The grain remains one row per item within an order.
+      GRAIN: One row per item within an order (order_item_pk).
     columns:
+      - name: order_item_pk
+        description: "Primary key. Hashed combination of order_id and order_item_id."
+        tests:
+          - unique
+          - not_null
       - name: order_id
         description: "Foreign key to the orders table."
         tests:

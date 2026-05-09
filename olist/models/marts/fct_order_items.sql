@@ -11,6 +11,7 @@ orders AS (
 )
 
 SELECT
+    oi.order_item_pk,
     oi.order_id,
     oi.order_item_id,
     oi.product_id,

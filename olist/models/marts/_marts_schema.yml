@@ -161,9 +161,12 @@ models:
 
   - name: fct_order_items
     description: >
-      Detailed line-item fact table. One row per product within an order. 
+      Detailed line-item fact table. 
+      GRAIN: One row per product within an order (order_item_pk).
       Includes product category enrichment and seller details.
     columns:
+      - name: order_item_pk
+        description: "Primary key. Hashed combination of order_id and order_item_id."
       - name: order_id
         description: "Foreign key to fct_orders."
         tests:
