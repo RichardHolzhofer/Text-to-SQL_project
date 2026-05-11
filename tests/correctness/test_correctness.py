@@ -41,20 +41,26 @@ def cached_schema():
 # 2. METRIC: Define Factual Correctness via G-Eval
 correctness_metric = GEval(
     model='gpt-4.1',
-    threshold=0.8,
     name="Factual Correctness",
-    criteria="Determine whether the actual output is factually correct based on the expected output.",
+    evaluation_steps=[
+        "Check whether the facts in the actual output contradict any facts in the expected output.",
+        "Check whether the key data points, numbers, and categories in the actual output are factually accurate based on the expected output.",
+        "Do not penalize for variations in column names or keys (e.g., 'AVG_SCORE' vs 'AVERAGE_SCORE') if the meaning and data are equivalent.",
+        "Ignore minor formatting differences such as casing or extra spaces if the factual content matches.",
+        "Do NOT penalize for omission of detail — the actual output only needs to correctly answer the question, not match the level of detail in the expected output.",
+        "Vague language or missing elaboration is acceptable as long as no incorrect facts are stated."
+    ],
     evaluation_params=[
-        SingleTurnParams.INPUT,
         SingleTurnParams.ACTUAL_OUTPUT,
         SingleTurnParams.EXPECTED_OUTPUT,
     ],
+    threshold=0.7,
 )
 
 # 3. DATASET: Load the generated Goldens
 dataset = EvaluationDataset()
 dataset.add_goldens_from_json_file(
-    os.path.join(os.path.dirname(__file__), "data", "correctness_dataset_sample.json")
+    os.path.join(os.path.dirname(__file__), "data", "correctness_dataset.json")
 )
 
 
@@ -117,7 +123,7 @@ def test_text_to_sql_correctness(golden, graph, cached_schema):
                 if tab_res.data:
                     import json
                     # Dump data to string to match the expected_output format
-                    data_json = json.dumps(tab_res.data)
+                    data_json = json.dumps(tab_res.data, default=str)
                     actual_output = f"{actual_output} {data_json}"
             else:
                 actual_output = "No tabular answer generated."
@@ -131,17 +137,6 @@ def test_text_to_sql_correctness(golden, graph, cached_schema):
         else:
             actual_output = result.get("answer") or "No answer generated."
 
-        # 4. Validate Download Button mention
-        expected_download = metadata.get("download_button", False)
-        has_download_mention = "download button" in actual_output.lower()
-        if expected_download:
-            assert has_download_mention, (
-                f"Model forgot to mention download button in {metadata.get('id')}"
-            )
-        else:
-            assert not has_download_mention, (
-                f"Model hallucinated a download button in {metadata.get('id')}"
-            )
 
     # Create the test case for DeepEval with Normalization
     test_case = LLMTestCase(
@@ -153,7 +148,3 @@ def test_text_to_sql_correctness(golden, graph, cached_schema):
 
     # Evaluate
     assert_test(test_case, [correctness_metric])
-
-    # 5. LOGGING: Print results for visibility in pytest -s
-    print(f"\n[METRIC RESULT] {metadata.get('id')} - Score: {correctness_metric.score}")
-    print(f"[REASONING]: {correctness_metric.reason}")

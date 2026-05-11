@@ -14,6 +14,7 @@ ground_truth_sql: |
   WHERE 
       dc.is_returning_customer = 1
       AND LOWER(foi.product_category) = 'watches gifts'
+      AND fo.is_valid_order = 1
   GROUP BY 
       LOWER(dc.customer_city)
   ORDER BY 
@@ -22,18 +23,18 @@ ground_truth_sql: |
 expected_output: |
   Here are the tabular results you requested.
   [
-  {
-    "CITY": "sao paulo",
-    "TOTAL_REVENUE": 8600.40
-  },
-  {
-    "CITY": "rio de janeiro",
-    "TOTAL_REVENUE": 4117.80
-  },
-  {
-    "CITY": "porto alegre",
-    "TOTAL_REVENUE": 1885.80
-  }
+    {
+      "CUSTOMER_CITY": "sao paulo",
+      "TOTAL_REVENUE": 8600.4
+    },
+    {
+      "CUSTOMER_CITY": "rio de janeiro",
+      "TOTAL_REVENUE": 4117.8
+    },
+    {
+      "CUSTOMER_CITY": "porto alegre",
+      "TOTAL_REVENUE": 1885.8
+    }
   ]
 metadata:
   limit_type: standard_tab_limit

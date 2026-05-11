@@ -6,12 +6,13 @@ ground_truth_sql: |
   FROM fct_orders o
   JOIN dim_customers c ON o.customer_unique_id = c.customer_unique_id
   WHERE EDITDISTANCE(LOWER(c.customer_city), LOWER('Sao Paulo')) <= 2
+  AND o.is_valid_order = 1
   ORDER BY order_count DESC;
 expected_output: |
-  A total of 15,545 orders were placed by customers in Sao Paulo.
+  A total of 15,295 orders were placed by customers in Sao Paulo.
 metadata:
-  limit_type: standard_tab_limit
-  intent: tab
+  limit_type: standard_nl_limit
+  intent: nl
   download_button: False
   is_capped: False
-  is_editdistance: False
+  is_editdistance: True

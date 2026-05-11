@@ -5,7 +5,8 @@ ground_truth_sql: |
   SELECT o.customer_city, COUNT(*) AS order_count
   FROM fct_order_items oi
   JOIN fct_orders o ON oi.order_id = o.order_id
-  WHERE LOWER(oi.product_category) ILIKE '%beauty%'
+  WHERE o.is_valid_order = 1
+    AND oi.product_category ILIKE '%beauty%'
   GROUP BY o.customer_city
   ORDER BY order_count DESC
   LIMIT 3;
@@ -14,11 +15,11 @@ expected_output: |
   [
   {
     "CUSTOMER_CITY": "sao paulo",
-    "ORDER_COUNT": 1753
+    "ORDER_COUNT": 1742
   },
   {
     "CUSTOMER_CITY": "rio de janeiro",
-    "ORDER_COUNT": 572
+    "ORDER_COUNT": 571
   },
   {
     "CUSTOMER_CITY": "belo horizonte",

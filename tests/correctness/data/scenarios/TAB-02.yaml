@@ -1,6 +1,6 @@
 id: TAB-02
 category: Standard Tab
-input: Show a table with the count of orders for each current order status.
+input: Show a table with the count of orders for each current order status including invalid orders.
 ground_truth_sql: |
   SELECT o.order_status, COUNT(o.order_id) AS order_count
   FROM fct_orders o

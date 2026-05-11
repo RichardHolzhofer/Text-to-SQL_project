@@ -1,74 +1,51 @@
 id: TAB-05
 category: Standard Tab
-input: Show a comparison table of the average review score for orders that used a voucher versus those that didn't, for the top 5 states with the most orders.
+input: Show a comparison table of the average review score for valid orders that used a voucher versus those that didn't, for the top 5 states with the most valid orders.
 ground_truth_sql: |
   WITH top_states AS (
-  SELECT customer_state, COUNT(order_id) AS order_count
-  FROM fct_orders
-  GROUP BY customer_state
-  ORDER BY order_count DESC
-  LIMIT 5
+      SELECT o.customer_state, COUNT(*) AS valid_order_count
+      FROM fct_orders o
+      WHERE o.is_valid_order = 1
+      GROUP BY o.customer_state
+      ORDER BY valid_order_count DESC
+      LIMIT 5
   )
   SELECT 
-  o.customer_state,
-  o.has_voucher_payment,
-  AVG(o.review_score) AS average_review_score
+      o.customer_state,
+      AVG(CASE WHEN o.has_voucher_payment = 1 THEN o.review_score END) AS avg_review_score_with_voucher,
+      AVG(CASE WHEN o.has_voucher_payment = 0 THEN o.review_score END) AS avg_review_score_without_voucher
   FROM fct_orders o
   JOIN top_states ts ON o.customer_state = ts.customer_state
-  GROUP BY o.customer_state, o.has_voucher_payment
-  ORDER BY o.customer_state, o.has_voucher_payment;
+  WHERE o.is_valid_order = 1
+  GROUP BY o.customer_state
+  ORDER BY o.customer_state;
 expected_output: |
   Here are the tabular results you requested.
   [
   {
     "CUSTOMER_STATE": "mg",
-    "HAS_VOUCHER_PAYMENT": 0,
-    "AVERAGE_REVIEW_SCORE": 4.123381262838
-  },
-  {
-    "CUSTOMER_STATE": "mg",
-    "HAS_VOUCHER_PAYMENT": 1,
-    "AVERAGE_REVIEW_SCORE": 4.047945205479
+    "AVG_REVIEW_SCORE_WITH_VOUCHER": 4.108490566038,
+    "AVG_REVIEW_SCORE_WITHOUT_VOUCHER": 4.152185693642
   },
   {
     "CUSTOMER_STATE": "pr",
-    "HAS_VOUCHER_PAYMENT": 0,
-    "AVERAGE_REVIEW_SCORE": 4.167973586463
-  },
-  {
-    "CUSTOMER_STATE": "pr",
-    "HAS_VOUCHER_PAYMENT": 1,
-    "AVERAGE_REVIEW_SCORE": 4.185929648241
+    "AVG_REVIEW_SCORE_WITH_VOUCHER": 4.262886597938,
+    "AVG_REVIEW_SCORE_WITHOUT_VOUCHER": 4.195656713301
   },
   {
     "CUSTOMER_STATE": "rj",
-    "HAS_VOUCHER_PAYMENT": 0,
-    "AVERAGE_REVIEW_SCORE": 3.857578220236
-  },
-  {
-    "CUSTOMER_STATE": "rj",
-    "HAS_VOUCHER_PAYMENT": 1,
-    "AVERAGE_REVIEW_SCORE": 3.810481413163
+    "AVG_REVIEW_SCORE_WITH_VOUCHER": 3.881983677966,
+    "AVG_REVIEW_SCORE_WITHOUT_VOUCHER": 3.883825100682
   },
   {
     "CUSTOMER_STATE": "rs",
-    "HAS_VOUCHER_PAYMENT": 0,
-    "AVERAGE_REVIEW_SCORE": 4.124267070172
-  },
-  {
-    "CUSTOMER_STATE": "rs",
-    "HAS_VOUCHER_PAYMENT": 1,
-    "AVERAGE_REVIEW_SCORE": 4.184357541899
+    "AVG_REVIEW_SCORE_WITH_VOUCHER": 4.254335260116,
+    "AVG_REVIEW_SCORE_WITHOUT_VOUCHER": 4.145118230359
   },
   {
     "CUSTOMER_STATE": "sp",
-    "HAS_VOUCHER_PAYMENT": 0,
-    "AVERAGE_REVIEW_SCORE": 4.164329597335
-  },
-  {
-    "CUSTOMER_STATE": "sp",
-    "HAS_VOUCHER_PAYMENT": 1,
-    "AVERAGE_REVIEW_SCORE": 4.070175438596
+    "AVG_REVIEW_SCORE_WITH_VOUCHER": 4.144617380026,
+    "AVG_REVIEW_SCORE_WITHOUT_VOUCHER": 4.20057681781
   }
   ]
 metadata:

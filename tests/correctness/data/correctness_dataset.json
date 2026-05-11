@@ -23,7 +23,7 @@
     {
         "input": "Summarize the individual order details for all customers in Sao Paulo during 2017, including product and pricing information.",
         "actual_output": null,
-        "expected_output": "Based on the first 100 records (out of 1000+ total) matching your criteria, here is a summary of individual order details for customers in Sao Paulo during 2017:\n\nOrders include a variety of products with prices ranging from as low as 5.53 to as high as 610.\nFreight values for these orders range from 1.8 to 37.54.\nOrders were placed throughout the year, with timestamps indicating purchases from January to December 2017.\nSome orders contain multiple items, as indicated by repeated order IDs with different product IDs.\n\nThe full dataset is available for download via the button below.\n\nNote: The full results exceeded our safety limit of 1000 records. Please run the following query directly in your database to get all requested records:\n```sql\nSELECT \n    o.order_id, \n    oi.product_id, \n    oi.price, \n    oi.freight_value, \n    o.order_purchase_timestamp\nFROM \n    fct_orders o\nJOIN \n    dim_customers c ON o.customer_unique_id = c.customer_unique_id\nJOIN \n    fct_order_items oi ON o.order_id = oi.order_id\nWHERE \n    LOWER(c.customer_city) = 'sao paulo'\n    AND o.order_purchase_timestamp >= '2017-01-01' \n    AND o.order_purchase_timestamp < '2018-01-01'\nORDER BY \n    o.order_id;\n```\n",
+        "expected_output": "Based on the first 100 records (out of 1000+ total) matching your criteria, here is a summary of individual order details for customers in Sao Paulo during 2017:\n\nOrders include a variety of products with prices ranging from as low as 7.79 to as high as 610.\nOrders were placed throughout the year, with timestamps indicating purchases from January to December 2017.\nSome orders contain multiple items, as indicated by repeated order IDs with different product IDs.\n\nThe full dataset is available for download via the button below.\n\nNote: The full results exceeded our safety limit of 1000 records. Please run the following query directly in your database to get all requested records:\n```sql\n  SELECT\n  o.order_id,\n  oi.product_id,\n  oi.price,\n  oi.freight_value\n  FROM\n  fct_orders o\n  JOIN\n  fct_order_items oi ON o.order_id = oi.order_id\n  WHERE\n  LOWER(o.customer_city) = 'sao paulo'\n  AND o.is_valid_order = 1\n  AND YEAR(o.order_purchase_timestamp) = 2017\n  ORDER BY\n  o.order_id;\n```\n",
         "retrieval_context": null,
         "context": null,
         "name": "BND-02",
@@ -107,7 +107,7 @@
     {
         "input": "How many orders were placed by customers in Sao Palo?",
         "actual_output": null,
-        "expected_output": "A total of 15,545 orders were placed by customers in Sao Paulo.\n",
+        "expected_output": "A total of 15,295 orders were placed by customers in Sao Paulo.\n",
         "retrieval_context": null,
         "context": null,
         "name": "FZY-01",
@@ -117,12 +117,12 @@
         "expected_tools": null,
         "additional_metadata": {
             "category": "Fuzzy Matching",
-            "ground_truth_sql": "SELECT COUNT(o.order_id) AS order_count\nFROM fct_orders o\nJOIN dim_customers c ON o.customer_unique_id = c.customer_unique_id\nWHERE EDITDISTANCE(LOWER(c.customer_city), LOWER('Sao Paulo')) <= 2\nORDER BY order_count DESC;\n",
-            "limit_type": "standard_tab_limit",
-            "intent": "tab",
+            "ground_truth_sql": "SELECT COUNT(o.order_id) AS order_count\nFROM fct_orders o\nJOIN dim_customers c ON o.customer_unique_id = c.customer_unique_id\nWHERE EDITDISTANCE(LOWER(c.customer_city), LOWER('Sao Paulo')) <= 2\nAND o.is_valid_order = 1\nORDER BY order_count DESC;\n",
+            "limit_type": "standard_nl_limit",
+            "intent": "nl",
             "download_button": false,
             "is_capped": false,
-            "is_editdistance": false
+            "is_editdistance": true
         },
         "custom_column_key_values": null
     },
@@ -151,7 +151,7 @@
     {
         "input": "What is the total revenue from customers in the state of Minias Gerais?",
         "actual_output": null,
-        "expected_output": "The total revenue from customers in the state of Minas Gerais is 1,871,681.69 BRL.\n",
+        "expected_output": "The total revenue from customers in the state of Minas Gerais is 1,573,269.18 BRL.\n",
         "retrieval_context": null,
         "context": null,
         "name": "FZY-03",
@@ -161,9 +161,9 @@
         "expected_tools": null,
         "additional_metadata": {
             "category": "Fuzzy Matching",
-            "ground_truth_sql": "SELECT SUM(o.total_order_value) AS total_revenue_mg\nFROM dim_customers c\nJOIN fct_orders o ON c.customer_unique_id = o.customer_unique_id\nWHERE LOWER(c.customer_state) = 'mg';\n",
-            "limit_type": "standard_tab_limit",
-            "intent": "tab",
+            "ground_truth_sql": "SELECT SUM(oi.price) AS total_revenue\nFROM fct_order_items oi\nJOIN fct_orders o ON oi.order_id = o.order_id\nJOIN dim_customers c ON o.customer_unique_id = c.customer_unique_id\nWHERE LOWER(c.customer_state) = 'mg'\nAND o.is_valid_order = 1;\n",
+            "limit_type": "standard_nl_limit",
+            "intent": "nl",
             "download_button": false,
             "is_capped": false,
             "is_editdistance": true
@@ -173,7 +173,7 @@
     {
         "input": "Show the top 3 cities with the most orders for 'beuty' products.",
         "actual_output": null,
-        "expected_output": "Here are the tabular results you requested.\n[\n{\n  \"CUSTOMER_CITY\": \"sao paulo\",\n  \"ORDER_COUNT\": 1753\n},\n{\n  \"CUSTOMER_CITY\": \"rio de janeiro\",\n  \"ORDER_COUNT\": 572\n},\n{\n  \"CUSTOMER_CITY\": \"belo horizonte\",\n  \"ORDER_COUNT\": 274\n}\n]\n",
+        "expected_output": "Here are the tabular results you requested.\n[\n{\n  \"CUSTOMER_CITY\": \"sao paulo\",\n  \"ORDER_COUNT\": 1742\n},\n{\n  \"CUSTOMER_CITY\": \"rio de janeiro\",\n  \"ORDER_COUNT\": 571\n},\n{\n  \"CUSTOMER_CITY\": \"belo horizonte\",\n  \"ORDER_COUNT\": 274\n}\n]\n",
         "retrieval_context": null,
         "context": null,
         "name": "FZY-04",
@@ -183,7 +183,7 @@
         "expected_tools": null,
         "additional_metadata": {
             "category": "Fuzzy Matching",
-            "ground_truth_sql": "SELECT o.customer_city, COUNT(*) AS order_count\nFROM fct_order_items oi\nJOIN fct_orders o ON oi.order_id = o.order_id\nWHERE LOWER(oi.product_category) ILIKE '%beauty%'\nGROUP BY o.customer_city\nORDER BY order_count DESC\nLIMIT 3;\n",
+            "ground_truth_sql": "SELECT o.customer_city, COUNT(*) AS order_count\nFROM fct_order_items oi\nJOIN fct_orders o ON oi.order_id = o.order_id\nWHERE o.is_valid_order = 1\n  AND oi.product_category ILIKE '%beauty%'\nGROUP BY o.customer_city\nORDER BY order_count DESC\nLIMIT 3;\n",
             "limit_type": "standard_tab_limit",
             "intent": "tab",
             "download_button": false,
@@ -205,9 +205,9 @@
         "expected_tools": null,
         "additional_metadata": {
             "category": "Fuzzy Matching",
-            "ground_truth_sql": "SELECT AVG(o.actual_delivery_time_days) AS average_delivery_time_days\nFROM fct_orders o\nJOIN dim_customers c ON o.customer_unique_id = c.customer_unique_id\nWHERE EDITDISTANCE(LOWER(o.order_status), LOWER('shipped')) <= 2\nAND EDITDISTANCE(LOWER(c.customer_city), LOWER('Rio de Janeiro')) <= 2\nGROUP BY c.customer_city\nORDER BY average_delivery_time_days;\n",
-            "limit_type": "standard_tab_limit",
-            "intent": "tab",
+            "ground_truth_sql": "SELECT AVG(o.actual_delivery_time_days) AS average_delivery_time\nFROM fct_orders o\nJOIN dim_customers c ON o.customer_unique_id = c.customer_unique_id\nWHERE o.is_valid_order = 1\n  AND EDITDISTANCE(LOWER(o.order_status), 'shipped') <= 2\n  AND EDITDISTANCE(LOWER(c.customer_city), 'rio de janeiro') <= 2;\n",
+            "limit_type": "standard_nl_limit",
+            "intent": "nl",
             "download_button": false,
             "is_capped": false,
             "is_editdistance": true
@@ -257,7 +257,7 @@
     {
         "input": "Provide a summary of revenue trends for the first quarter of 2018.",
         "actual_output": null,
-        "expected_output": "January 2018: Revenue of 1,102,639.41 BRL from 7,187 orders (average order value 153.42 BRL).\nFebruary 2018: Revenue fell to 979,966.23 BRL from 6,625 orders (average order value 147.92 BRL).\nMarch 2018: Revenue rebounded to 1,152,736.74 BRL from 7,168 orders (average order value 160.82 BRL).  \n\nTrend summary  \nRevenue, order count and average order value dipped in February but recovered strongly in March, with the highest monthly revenue in the quarter.\n",
+        "expected_output": "In the first quarter of 2018, the revenue trends were as follows:\n\n- January 2018: The total revenue was 945,456.29 BRL.\n- February 2018: The total revenue decreased to 837,895.43 BRL.\n- March 2018: The total revenue increased to 981,051.06 BRL.\n\nOverall, there was a dip in revenue in February, followed by a recovery and increase in March.\n",
         "retrieval_context": null,
         "context": null,
         "name": "NL-03",
@@ -267,7 +267,7 @@
         "expected_tools": null,
         "additional_metadata": {
             "category": "Standard NL",
-            "ground_truth_sql": "SELECT DATE_TRUNC('month', o.order_purchase_timestamp) AS month,\nSUM(o.total_order_value) AS total_revenue,\nCOUNT(*) AS order_count,\nAVG(o.total_order_value) AS avg_order_value\nFROM fct_orders AS o\nWHERE o.is_valid_order = 1\nAND o.order_purchase_timestamp >= DATE '2018-01-01'\nAND o.order_purchase_timestamp < DATE '2018-04-01'\nGROUP BY month\nORDER BY month;\n",
+            "ground_truth_sql": "SELECT \n  DATE_TRUNC('month', o.order_purchase_timestamp) AS month,\n  SUM(oi.price) AS total_revenue\nFROM \n  fct_order_items oi\nJOIN \n  fct_orders o ON oi.order_id = o.order_id\nWHERE \n  o.is_valid_order = 1\n  AND o.order_purchase_timestamp >= '2018-01-01'\n  AND o.order_purchase_timestamp < '2018-04-01'\nGROUP BY month\nORDER BY month;\n",
             "limit_type": "standard_nl_limit",
             "intent": "nl",
             "download_button": false
@@ -431,7 +431,7 @@
         "custom_column_key_values": null
     },
     {
-        "input": "Show a table with the count of orders for each current order status.",
+        "input": "Show a table with the count of orders for each current order status including invalid orders.",
         "actual_output": null,
         "expected_output": "Here are the tabular results you requested.\n[\n{\n  \"ORDER_STATUS\": \"approved\",\n  \"ORDER_COUNT\": 2\n},\n{\n  \"ORDER_STATUS\": \"canceled\",\n  \"ORDER_COUNT\": 625\n},\n{\n  \"ORDER_STATUS\": \"created\",\n  \"ORDER_COUNT\": 5\n},\n{\n  \"ORDER_STATUS\": \"delivered\",\n  \"ORDER_COUNT\": 96478\n},\n{\n  \"ORDER_STATUS\": \"invoiced\",\n  \"ORDER_COUNT\": 314\n},\n{\n  \"ORDER_STATUS\": \"processing\",\n  \"ORDER_COUNT\": 301\n},\n{\n  \"ORDER_STATUS\": \"shipped\",\n  \"ORDER_COUNT\": 1107\n},\n{\n  \"ORDER_STATUS\": \"unavailable\",\n  \"ORDER_COUNT\": 609\n}\n]\n",
         "retrieval_context": null,
@@ -471,7 +471,7 @@
     {
         "input": "List the top 3 cities based on total revenue generated from items sold in the 'watches gifts' category to 'returning customers'.",
         "actual_output": null,
-        "expected_output": "Here are the tabular results you requested.\n[\n{\n  \"CITY\": \"sao paulo\",\n  \"TOTAL_REVENUE\": 8600.40\n},\n{\n  \"CITY\": \"rio de janeiro\",\n  \"TOTAL_REVENUE\": 4117.80\n},\n{\n  \"CITY\": \"porto alegre\",\n  \"TOTAL_REVENUE\": 1885.80\n}\n]\n",
+        "expected_output": "Here are the tabular results you requested.\n[\n  {\n    \"CUSTOMER_CITY\": \"sao paulo\",\n    \"TOTAL_REVENUE\": 8600.4\n  },\n  {\n    \"CUSTOMER_CITY\": \"rio de janeiro\",\n    \"TOTAL_REVENUE\": 4117.8\n  },\n  {\n    \"CUSTOMER_CITY\": \"porto alegre\",\n    \"TOTAL_REVENUE\": 1885.8\n  }\n]\n",
         "retrieval_context": null,
         "context": null,
         "name": "TAB-04",
@@ -481,16 +481,16 @@
         "expected_tools": null,
         "additional_metadata": {
             "category": "Standard Tab",
-            "ground_truth_sql": "SELECT \n    LOWER(dc.customer_city) AS city, \n    SUM(foi.price) AS total_revenue\nFROM \n    dim_customers dc\nJOIN \n    fct_orders fo ON dc.customer_unique_id = fo.customer_unique_id\nJOIN \n    fct_order_items foi ON fo.order_id = foi.order_id\nWHERE \n    dc.is_returning_customer = 1\n    AND LOWER(foi.product_category) = 'watches gifts'\nGROUP BY \n    LOWER(dc.customer_city)\nORDER BY \n    total_revenue DESC\nLIMIT 3;\n",
+            "ground_truth_sql": "SELECT \n    LOWER(dc.customer_city) AS city, \n    SUM(foi.price) AS total_revenue\nFROM \n    dim_customers dc\nJOIN \n    fct_orders fo ON dc.customer_unique_id = fo.customer_unique_id\nJOIN \n    fct_order_items foi ON fo.order_id = foi.order_id\nWHERE \n    dc.is_returning_customer = 1\n    AND LOWER(foi.product_category) = 'watches gifts'\n    AND fo.is_valid_order = 1\nGROUP BY \n    LOWER(dc.customer_city)\nORDER BY \n    total_revenue DESC\nLIMIT 3;\n",
             "limit_type": "standard_tab_limit",
             "intent": "tab"
         },
         "custom_column_key_values": null
     },
     {
-        "input": "Show a comparison table of the average review score for orders that used a voucher versus those that didn't, for the top 5 states with the most orders.",
+        "input": "Show a comparison table of the average review score for valid orders that used a voucher versus those that didn't, for the top 5 states with the most valid orders.",
         "actual_output": null,
-        "expected_output": "Here are the tabular results you requested.\n[\n{\n  \"CUSTOMER_STATE\": \"mg\",\n  \"HAS_VOUCHER_PAYMENT\": 0,\n  \"AVERAGE_REVIEW_SCORE\": 4.123381262838\n},\n{\n  \"CUSTOMER_STATE\": \"mg\",\n  \"HAS_VOUCHER_PAYMENT\": 1,\n  \"AVERAGE_REVIEW_SCORE\": 4.047945205479\n},\n{\n  \"CUSTOMER_STATE\": \"pr\",\n  \"HAS_VOUCHER_PAYMENT\": 0,\n  \"AVERAGE_REVIEW_SCORE\": 4.167973586463\n},\n{\n  \"CUSTOMER_STATE\": \"pr\",\n  \"HAS_VOUCHER_PAYMENT\": 1,\n  \"AVERAGE_REVIEW_SCORE\": 4.185929648241\n},\n{\n  \"CUSTOMER_STATE\": \"rj\",\n  \"HAS_VOUCHER_PAYMENT\": 0,\n  \"AVERAGE_REVIEW_SCORE\": 3.857578220236\n},\n{\n  \"CUSTOMER_STATE\": \"rj\",\n  \"HAS_VOUCHER_PAYMENT\": 1,\n  \"AVERAGE_REVIEW_SCORE\": 3.810481413163\n},\n{\n  \"CUSTOMER_STATE\": \"rs\",\n  \"HAS_VOUCHER_PAYMENT\": 0,\n  \"AVERAGE_REVIEW_SCORE\": 4.124267070172\n},\n{\n  \"CUSTOMER_STATE\": \"rs\",\n  \"HAS_VOUCHER_PAYMENT\": 1,\n  \"AVERAGE_REVIEW_SCORE\": 4.184357541899\n},\n{\n  \"CUSTOMER_STATE\": \"sp\",\n  \"HAS_VOUCHER_PAYMENT\": 0,\n  \"AVERAGE_REVIEW_SCORE\": 4.164329597335\n},\n{\n  \"CUSTOMER_STATE\": \"sp\",\n  \"HAS_VOUCHER_PAYMENT\": 1,\n  \"AVERAGE_REVIEW_SCORE\": 4.070175438596\n}\n]\n",
+        "expected_output": "Here are the tabular results you requested.\n[\n{\n  \"CUSTOMER_STATE\": \"mg\",\n  \"AVG_REVIEW_SCORE_WITH_VOUCHER\": 4.108490566038,\n  \"AVG_REVIEW_SCORE_WITHOUT_VOUCHER\": 4.152185693642\n},\n{\n  \"CUSTOMER_STATE\": \"pr\",\n  \"AVG_REVIEW_SCORE_WITH_VOUCHER\": 4.262886597938,\n  \"AVG_REVIEW_SCORE_WITHOUT_VOUCHER\": 4.195656713301\n},\n{\n  \"CUSTOMER_STATE\": \"rj\",\n  \"AVG_REVIEW_SCORE_WITH_VOUCHER\": 3.881983677966,\n  \"AVG_REVIEW_SCORE_WITHOUT_VOUCHER\": 3.883825100682\n},\n{\n  \"CUSTOMER_STATE\": \"rs\",\n  \"AVG_REVIEW_SCORE_WITH_VOUCHER\": 4.254335260116,\n  \"AVG_REVIEW_SCORE_WITHOUT_VOUCHER\": 4.145118230359\n},\n{\n  \"CUSTOMER_STATE\": \"sp\",\n  \"AVG_REVIEW_SCORE_WITH_VOUCHER\": 4.144617380026,\n  \"AVG_REVIEW_SCORE_WITHOUT_VOUCHER\": 4.20057681781\n}\n]\n",
         "retrieval_context": null,
         "context": null,
         "name": "TAB-05",
@@ -500,7 +500,7 @@
         "expected_tools": null,
         "additional_metadata": {
             "category": "Standard Tab",
-            "ground_truth_sql": "WITH top_states AS (\nSELECT customer_state, COUNT(order_id) AS order_count\nFROM fct_orders\nGROUP BY customer_state\nORDER BY order_count DESC\nLIMIT 5\n)\nSELECT \no.customer_state,\no.has_voucher_payment,\nAVG(o.review_score) AS average_review_score\nFROM fct_orders o\nJOIN top_states ts ON o.customer_state = ts.customer_state\nGROUP BY o.customer_state, o.has_voucher_payment\nORDER BY o.customer_state, o.has_voucher_payment;\n",
+            "ground_truth_sql": "WITH top_states AS (\n    SELECT o.customer_state, COUNT(*) AS valid_order_count\n    FROM fct_orders o\n    WHERE o.is_valid_order = 1\n    GROUP BY o.customer_state\n    ORDER BY valid_order_count DESC\n    LIMIT 5\n)\nSELECT \n    o.customer_state,\n    AVG(CASE WHEN o.has_voucher_payment = 1 THEN o.review_score END) AS avg_review_score_with_voucher,\n    AVG(CASE WHEN o.has_voucher_payment = 0 THEN o.review_score END) AS avg_review_score_without_voucher\nFROM fct_orders o\nJOIN top_states ts ON o.customer_state = ts.customer_state\nWHERE o.is_valid_order = 1\nGROUP BY o.customer_state\nORDER BY o.customer_state;\n",
             "limit_type": "standard_tab_limit",
             "intent": "tab"
         },

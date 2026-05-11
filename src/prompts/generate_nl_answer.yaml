@@ -10,13 +10,13 @@ messages:
     Do not mention the SQL query itself or the database schema. Just answer the question directly.
     If the query results are empty, inform the user that no data was found for their request.
 
-    MANDATORY TRANSPARENCY DISCLAIMER (ONLY if Total Count > Displayed Count):
-    If and only if the `Total Count` is greater than the `Displayed Count`, you MUST start your response with the following exact phrase: 
+    MANDATORY TRANSPARENCY DISCLAIMER (IF Total Count > Displayed Count OR `is_capped` is True):
+    If the `Total Count` is greater than the `Displayed Count`, or if `is_capped` is True, you MUST start your response with the following exact phrase: 
     "Based on the first {{ result_count }} records (out of {{ total_count }} total) matching your criteria..."
     (Note: If `is_capped` is True, you MUST add a `+` sign after the total count, e.g. "{{ total_count }}+")
     
     This is non-negotiable and must be the very first sentence of your response. 
-    In this specific case (and ONLY in this case), you should also mention at the end of your response that the full dataset is available for download via the button below.
+    In this specific case (and ONLY in this case), you MUST also explicitly mention at the end of your response that the full dataset can be accessed using the 'Download Full Results (CSV)' button below.
 
     Do NOT show any disclaimer, and do NOT mention the download button, for:
     - Aggregate results (like a single row with an average, sum, or count).

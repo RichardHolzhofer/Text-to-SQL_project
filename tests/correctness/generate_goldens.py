@@ -55,7 +55,7 @@ DEFAULT_SCENARIOS = [
     {
         "id": "TAB-02",
         "category": "Standard Tab",
-        "input": "Show a table with the count of orders for each current order status.",
+        "input": "Show a table with the count of orders for each current order status including invalid orders.",
         "limit_type": "standard_tab_limit",
         "intent": "tab",
     },
@@ -76,7 +76,7 @@ DEFAULT_SCENARIOS = [
     {
         "id": "TAB-05",
         "category": "Standard Tab",
-        "input": "Show a comparison table of the average review score for orders that used a voucher versus those that didn't, for the top 5 states with the most orders.",
+        "input": "Show a comparison table of the average review score for valid orders that used a voucher versus those that didn't, for the top 5 states with the most valid orders.",
         "limit_type": "standard_tab_limit",
         "intent": "tab",
     },
