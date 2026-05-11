@@ -57,7 +57,7 @@ correctness_metric = GEval(
 # 3. DATASET: Load the generated Goldens
 dataset = EvaluationDataset()
 dataset.add_goldens_from_json_file(
-    str(Path(__file__).parent / "data" / "correctness_dataset_sample.json")
+    str(Path(__file__).parent / "data" / "correctness_dataset.json")
 )
 
 
