@@ -30,6 +30,7 @@ dependencies = [
     "psycopg-pool>=3.3.0",
     "psycopg>=3.3.3",
     "langchain-openai>=1.2.1",
+    "langgraph-cli[inmem]>=0.4.25",
 ]
 
 [tool.ruff]

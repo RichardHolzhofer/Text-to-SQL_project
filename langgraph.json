@@ -1,0 +1,10 @@
+{
+  "graphs": {
+    "text_to_sql": "./src/graph.py:graph"
+  },
+  "env": ".env",
+  "python_version": "3.13",
+  "dependencies": [
+    "."
+  ]
+}

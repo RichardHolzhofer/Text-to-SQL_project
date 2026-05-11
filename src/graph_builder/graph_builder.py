@@ -16,15 +16,6 @@ class TextToSQLGraph:
         self.nodes = TextToSQLNodes(config=self.config)
         self.graph = None
 
-        # Initialize Postgres connection pool for persistent memory
-        self.pool = ConnectionPool(
-            conninfo=self.config.sb_db_uri, max_size=20, kwargs={"autocommit": True}
-        )
-        self.memory = PostgresSaver(self.pool)
-
-        # Ensure the checkpoint tables exist in Supabase
-        self.memory.setup()
-
     def _route_after_intent(self, state: TextToSQLState):
         # Only route to semantic if it's a review query AND has fuzzy/semantic intent
         if (
@@ -64,7 +55,7 @@ class TextToSQLGraph:
             return "tabular"
         return "nl"
 
-    def build_graph(self):
+    def build_graph(self, checkpointer=None):
         # Define the StateGraph with the state schema
         workflow = StateGraph(TextToSQLState)
 
@@ -135,7 +126,7 @@ class TextToSQLGraph:
         workflow.add_edge("summarize_review_sentiment_node", END)
 
         # Compile and add checkpointer for memory
-        self.graph = workflow.compile(checkpointer=self.memory)
+        self.graph = workflow.compile(checkpointer=checkpointer)
 
         return self.graph
 
