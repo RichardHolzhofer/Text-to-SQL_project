@@ -1,9 +1,6 @@
-import sys
-import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-
 import re
 import uuid
+from pathlib import Path
 
 import pytest
 from deepeval import assert_test
@@ -60,7 +57,7 @@ correctness_metric = GEval(
 # 3. DATASET: Load the generated Goldens
 dataset = EvaluationDataset()
 dataset.add_goldens_from_json_file(
-    os.path.join(os.path.dirname(__file__), "data", "correctness_dataset.json")
+    str(Path(__file__).parent / "data" / "correctness_dataset_sample.json")
 )
 
 

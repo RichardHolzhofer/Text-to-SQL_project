@@ -35,3 +35,7 @@ dependencies = [
 [tool.ruff]
 lint.select = ["E", "F", "I"]
 lint.ignore = ["E501"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

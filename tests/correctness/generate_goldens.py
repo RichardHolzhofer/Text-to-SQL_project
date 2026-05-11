@@ -1,12 +1,11 @@
-import os
-
 import yaml
+from pathlib import Path
 from deepeval.dataset import EvaluationDataset, Golden
 
 # Path configuration
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SCENARIOS_DIR = os.path.join(BASE_DIR, "data", "scenarios")
-DATASET_FILE = os.path.join(BASE_DIR, "data", "correctness_dataset.json")
+BASE_DIR = Path(__file__).resolve().parent
+SCENARIOS_DIR = BASE_DIR / "data" / "scenarios"
+DATASET_FILE = BASE_DIR / "data" / "correctness_dataset.json"
 
 # Default scenario definitions (for bootstrapping)
 DEFAULT_SCENARIOS = [
@@ -190,11 +189,11 @@ DEFAULT_SCENARIOS = [
 
 def bootstrap_scenarios():
     """Creates the initial YAML files if the directory is empty."""
-    os.makedirs(SCENARIOS_DIR, exist_ok=True)
+    SCENARIOS_DIR.mkdir(parents=True, exist_ok=True)
 
     for item in DEFAULT_SCENARIOS:
-        file_path = os.path.join(SCENARIOS_DIR, f"{item['id']}.yaml")
-        if not os.path.exists(file_path):
+        file_path = SCENARIOS_DIR / f"{item['id']}.yaml"
+        if not file_path.exists():
             data = {
                 "id": item["id"],
                 "category": item["category"],
@@ -227,12 +226,12 @@ def generate_dataset():
     bootstrap_scenarios()
 
     goldens = []
-    files = [f for f in os.listdir(SCENARIOS_DIR) if f.endswith(".yaml")]
+    files = [f for f in SCENARIOS_DIR.iterdir() if f.suffix == ".yaml"]
 
     print(f"Scanning {len(files)} YAML files...")
 
-    for filename in files:
-        with open(os.path.join(SCENARIOS_DIR, filename), "r", encoding="utf-8") as f:
+    for file_path in files:
+        with open(file_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
             expected = data.get("expected_output", "")
@@ -262,7 +261,7 @@ def generate_dataset():
     dataset = EvaluationDataset(goldens=goldens)
     dataset.save_as(
         file_type="json",
-        directory=os.path.join(BASE_DIR, "data"),
+        directory=str(BASE_DIR / "data"),
         file_name="correctness_dataset",
     )
     print(f"\nSuccessfully generated dataset with {len(goldens)} cases!")
