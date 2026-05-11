@@ -1,0 +1,29 @@
+id: NL-03
+category: Standard NL
+input: Provide a summary of revenue trends for the first quarter of 2018.
+ground_truth_sql: |
+  SELECT 
+    DATE_TRUNC('month', o.order_purchase_timestamp) AS month,
+    SUM(oi.price) AS total_revenue
+  FROM 
+    fct_order_items oi
+  JOIN 
+    fct_orders o ON oi.order_id = o.order_id
+  WHERE 
+    o.is_valid_order = 1
+    AND o.order_purchase_timestamp >= '2018-01-01'
+    AND o.order_purchase_timestamp < '2018-04-01'
+  GROUP BY month
+  ORDER BY month;
+expected_output: |
+  In the first quarter of 2018, the revenue trends were as follows:
+
+  - January 2018: The total revenue was 945,456.29 BRL.
+  - February 2018: The total revenue decreased to 837,895.43 BRL.
+  - March 2018: The total revenue increased to 981,051.06 BRL.
+
+  Overall, there was a dip in revenue in February, followed by a recovery and increase in March.
+metadata:
+  limit_type: standard_nl_limit
+  intent: nl
+  download_button: False

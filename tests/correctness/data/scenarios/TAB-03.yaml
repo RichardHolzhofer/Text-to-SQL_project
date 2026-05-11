@@ -1,0 +1,63 @@
+id: TAB-03
+category: Standard Tab
+input: List the top 5 customers by lifetime value, and include their city, state, and the total number of distinct product categories they have shopped from.
+ground_truth_sql: |
+  SELECT 
+    c.customer_unique_id, 
+    c.customer_city, 
+    c.customer_state, 
+    c.lifetime_value, 
+    COUNT(DISTINCT oi.product_category) AS distinct_product_categories
+    FROM 
+    dim_customers c
+    JOIN 
+    fct_orders o ON c.customer_unique_id = o.customer_unique_id
+    JOIN 
+    fct_order_items oi ON o.order_id = oi.order_id
+    GROUP BY 
+    c.customer_unique_id, c.customer_city, c.customer_state, c.lifetime_value
+    ORDER BY 
+    c.lifetime_value DESC
+    LIMIT 5;
+expected_output: |
+  Here are the tabular results you requested.
+  [
+  {
+    "CUSTOMER_UNIQUE_ID": "0a0a92112bd4c708ca5fde585afaa872",
+    "CUSTOMER_CITY": "rio de janeiro",
+    "CUSTOMER_STATE": "rj",
+    "LIFETIME_VALUE": 13664.08,
+    "DISTINCT_PRODUCT_CATEGORIES": 1
+  },
+  {
+    "CUSTOMER_UNIQUE_ID": "da122df9eeddfedc1dc1f5349a1a690c",
+    "CUSTOMER_CITY": "araruama",
+    "CUSTOMER_STATE": "rj",
+    "LIFETIME_VALUE": 7571.63,
+    "DISTINCT_PRODUCT_CATEGORIES": 1
+  },
+  {
+    "CUSTOMER_UNIQUE_ID": "763c8b1c9c68a0229c42c9fc6f662b93",
+    "CUSTOMER_CITY": "vila velha",
+    "CUSTOMER_STATE": "es",
+    "LIFETIME_VALUE": 7274.88,
+    "DISTINCT_PRODUCT_CATEGORIES": 1
+  },
+  {
+    "CUSTOMER_UNIQUE_ID": "dc4802a71eae9be1dd28f5d788ceb526",
+    "CUSTOMER_CITY": "campo grande",
+    "CUSTOMER_STATE": "ms",
+    "LIFETIME_VALUE": 6929.31,
+    "DISTINCT_PRODUCT_CATEGORIES": 1
+  },
+  {
+    "CUSTOMER_UNIQUE_ID": "459bef486812aa25204be022145caa62",
+    "CUSTOMER_CITY": "vitoria",
+    "CUSTOMER_STATE": "es",
+    "LIFETIME_VALUE": 6922.21,
+    "DISTINCT_PRODUCT_CATEGORIES": 1
+  }
+  ]
+metadata:
+  limit_type: standard_tab_limit
+  intent: tab

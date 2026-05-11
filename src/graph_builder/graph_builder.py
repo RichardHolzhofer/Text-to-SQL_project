@@ -26,7 +26,12 @@ class TextToSQLGraph:
         self.memory.setup()
 
     def _route_after_intent(self, state: TextToSQLState):
-        if state.router and state.router.is_review_query:
+        # Only route to semantic if it's a review query AND has fuzzy/semantic intent
+        if (
+            state.router
+            and state.router.is_review_query
+            and state.router.is_semantic_intent
+        ):
             return "semantic"
         return "general"
 

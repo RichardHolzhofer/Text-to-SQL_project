@@ -36,14 +36,14 @@ class TextToSQLNodes:
             self.fast_llm = config.get_fast_llm()
             self.db = SupabaseDB(config, admin=True)
             self.max_retry = 3
-            self.semantic_search_threshold = 0.6
+            self.semantic_search_threshold = 0.4
             self.semantic_tab_limit = 10
             self.semantic_nl_limit = 100
             self.standard_tab_limit = 10
             self.standard_nl_limit = 100
             self.mart_schema_path = "olist/models/marts/_marts_schema.yml"
             self.enhancement_schema_path = "embeddings/_embeddings_schema.yml"
-            self.safety_limit = 5000
+            self.safety_limit = 1000
             self.review_language = "Portuguese"
             logger.info("TextToSQLNodes initialized using Config LLMs and Supabase.")
         except Exception as e:
@@ -529,10 +529,12 @@ class TextToSQLNodes:
         truncated_results = state.query_results[:limit] if state.query_results else []
         result_count = len(truncated_results)
 
+        total_count_str = f"{total_count}+" if state.is_capped else str(total_count)
+
         # Generate a transparency disclaimer for tabular results
         answer = "Here are the tabular results you requested."
-        if total_count > result_count:
-            answer = f"Showing the first {result_count} records out of {total_count} total matches found. The full dataset can be downloaded as a CSV below."
+        if total_count > result_count or state.is_capped:
+            answer = f"Showing the first {result_count} records out of {total_count_str} total matches found. The full dataset can be downloaded as a CSV below."
 
         if state.is_capped:
             sql_query = state.generated_sql.sql_query if state.generated_sql else "N/A"
@@ -588,10 +590,11 @@ class TextToSQLNodes:
                     "sql_query_results": results_str,
                     "result_count": result_count,
                     "total_count": total_count,
+                    "is_capped": state.is_capped,
                 },
                 config=self.config,
                 chat_history=state.chat_history,
-                use_fast_llm=True,
+                use_fast_llm=False,
             )
             answer = response.content.strip()
 
@@ -646,6 +649,7 @@ class TextToSQLNodes:
                     "sql_query_results": results_str,
                     "result_count": result_count,
                     "total_count": total_count,
+                    "is_capped": state.is_capped,
                 },
                 config=self.config,
                 chat_history=state.chat_history,

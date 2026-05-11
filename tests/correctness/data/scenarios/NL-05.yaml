@@ -1,0 +1,53 @@
+id: NL-05
+category: Standard NL
+input: Summarize the top-performing product categories in terms of total sales volume.
+ground_truth_sql: |
+  SELECT
+  oi.product_category,
+  SUM(oi.price) AS total_sales_volume,
+  COUNT(*) AS items_sold
+  FROM fct_order_items AS oi
+  JOIN fct_orders AS o
+  ON oi.order_id = o.order_id
+  WHERE o.is_valid_order = 1
+  GROUP BY oi.product_category
+  ORDER BY total_sales_volume DESC;
+expected_output: |
+  Top-Performing Product Categories by Total Sales Volume
+
+
+  Rank: 1
+  Product Category: Health Beauty
+  Total Sales Volume: 1,255,695.13 BRL
+  Items Sold: 9,634
+
+  Rank: 2
+  Product Category: Watches Gifts
+  Total Sales Volume: 1,198,185.21 BRL
+  Items Sold: 5,970
+
+  Rank: 3
+  Product Category: Bed Bath Table
+  Total Sales Volume: 1,035,964.06 BRL
+  Items Sold: 11,097
+
+  Rank: 4
+  Product Category: Sports Leisure
+  Total Sales Volume: 979,740.92 BRL
+  Items Sold: 8,590
+  
+  Rank: 5
+  Product Category: Computers Accessories
+  Total Sales Volume: 904,322.02 BRL
+  Items Sold: 7,781
+
+  Key Takeaways
+
+  The 'Health Beauty' category leads by a significant margin, followed closely by 'Watches Gifts' and 'Bed Bath Table'.
+  Home-related categories (Bed Bath Table, Furniture Decor, Housewares) collectively contribute a large portion of sales.
+  Tech and leisure categories (Computers Accessories, Sports Leisure, Telephony) also perform strongly.
+  These top five categories account for roughly 70% of the total sales volume across all product categories.
+metadata:
+  limit_type: standard_nl_limit
+  intent: nl
+  download_button: True

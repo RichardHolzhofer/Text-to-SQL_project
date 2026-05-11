@@ -1,0 +1,22 @@
+id: NL-02
+category: Standard NL
+input: Explain the difference in average order value between new and returning customers.
+ground_truth_sql: |
+  SELECT 
+  AVG(CASE WHEN dc.is_returning_customer = 1 THEN dc.average_order_value END) AS returning_customers_avg_order_value,
+  AVG(CASE WHEN dc.is_returning_customer = 0 THEN dc.average_order_value END) AS new_customers_avg_order_value,
+  AVG(CASE WHEN dc.is_returning_customer = 1 THEN dc.average_order_value END) -
+  AVG(CASE WHEN dc.is_returning_customer = 0 THEN dc.average_order_value END) AS difference_in_avg_order_value
+  FROM dim_customers dc;
+expected_output: |
+  The data show that new customers spend more on average per order than returning customers.
+
+  Average order value for new customers: 159.31 BRL
+  Average order value for returning customers: 145.82 BRL
+  Difference: New customers' orders are on average 13.48 BRL higher than those of returning customers.
+
+  This suggests that when customers first make a purchase, they tend to order more (or higher-priced items) than they do in subsequent visits. It could reflect a higher initial order size, a promotional incentive for first-time buyers, or a difference in product mix between first-time and repeat purchases.
+metadata:
+  limit_type: standard_nl_limit
+  intent: nl
+  download_button: False

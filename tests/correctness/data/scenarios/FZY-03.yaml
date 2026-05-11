@@ -1,0 +1,18 @@
+id: FZY-03
+category: Fuzzy Matching
+input: What is the total revenue from customers in the state of Minias Gerais?
+ground_truth_sql: |
+  SELECT SUM(oi.price) AS total_revenue
+  FROM fct_order_items oi
+  JOIN fct_orders o ON oi.order_id = o.order_id
+  JOIN dim_customers c ON o.customer_unique_id = c.customer_unique_id
+  WHERE LOWER(c.customer_state) = 'mg'
+  AND o.is_valid_order = 1;
+expected_output: |
+  The total revenue from customers in the state of Minas Gerais is 1,573,269.18 BRL.
+metadata:
+  limit_type: standard_nl_limit
+  intent: nl
+  download_button: False
+  is_capped: False
+  is_editdistance: True

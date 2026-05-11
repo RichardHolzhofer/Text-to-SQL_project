@@ -1,0 +1,41 @@
+id: TAB-01
+category: Standard Tab
+input: Give me a table of the top 5 cities with the most customers.
+ground_truth_sql: |
+  SELECT 
+  dc.customer_city, 
+  COUNT(dc.customer_unique_id) AS customer_count
+  FROM 
+  dim_customers dc
+  GROUP BY 
+  dc.customer_city
+  ORDER BY 
+  customer_count DESC
+  LIMIT 5;
+expected_output: |
+  Here are the tabular results you requested.
+  [
+  {
+  "CUSTOMER_CITY": "sao paulo",
+  "CUSTOMER_COUNT": 14973
+  },
+  {
+  "CUSTOMER_CITY": "rio de janeiro",
+  "CUSTOMER_COUNT": 6613
+  },
+  {
+  "CUSTOMER_CITY": "belo horizonte",
+  "CUSTOMER_COUNT": 2669
+  },
+  {
+  "CUSTOMER_CITY": "brasilia",
+  "CUSTOMER_COUNT": 2065
+  },
+  {
+  "CUSTOMER_CITY": "curitiba",
+  "CUSTOMER_COUNT": 1462
+  }
+  ]
+metadata:
+  limit_type: standard_tab_limit
+  intent: tab

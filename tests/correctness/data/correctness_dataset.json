@@ -1,0 +1,509 @@
+[
+    {
+        "input": "List every single order ID and its status in the database.",
+        "actual_output": null,
+        "expected_output": "Showing the first 10 records out of 1000+ total matches found. The full dataset can be downloaded as a CSV below.\n\nNote: The full results exceeded our safety limit of 1000 records. Please run the following query directly in your database to get all requested records:\n```sql\nSELECT o.order_id,\n      o.order_status\nFROM fct_orders AS o\nORDER BY o.order_id;\n```\n[\n{\n  \"ORDER_ID\": \"00010242fe8c5a6d1ba2dd792cb16214\",\n  \"ORDER_STATUS\": \"delivered\"\n},\n{\n  \"ORDER_ID\": \"00018f77f2f0320c557190d7a144bdd3\",\n  \"ORDER_STATUS\": \"delivered\"\n},\n{\n  \"ORDER_ID\": \"000229ec398224ef6ca0657da4fc703e\",\n  \"ORDER_STATUS\": \"delivered\"\n},\n{\n  \"ORDER_ID\": \"00024acbcdf0a6daa1e931b038114c75\",\n  \"ORDER_STATUS\": \"delivered\"\n},\n{\n  \"ORDER_ID\": \"00042b26cf59d7ce69dfabb4e55b4fd9\",\n  \"ORDER_STATUS\": \"delivered\"\n},\n{\n  \"ORDER_ID\": \"00048cc3ae777c65dbb7d2a0634bc1ea\",\n  \"ORDER_STATUS\": \"delivered\"\n},\n{\n  \"ORDER_ID\": \"00054e8431b9d7675808bcb819fb4a32\",\n  \"ORDER_STATUS\": \"delivered\"\n},\n{\n  \"ORDER_ID\": \"000576fe39319847cbb9d288c5617fa6\",\n  \"ORDER_STATUS\": \"delivered\"\n},\n{\n  \"ORDER_ID\": \"0005a1a1728c9d785b8e2b08b904576c\",\n  \"ORDER_STATUS\": \"delivered\"\n},\n{\n  \"ORDER_ID\": \"0005f50442cb953dcd1d21e1fb923495\",\n  \"ORDER_STATUS\": \"delivered\"\n}\n]\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": "BND-01",
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "category": "Boundaries",
+            "ground_truth_sql": "SELECT o.order_id,\no.order_status\nFROM fct_orders AS o\nORDER BY o.order_id;\n",
+            "limit_type": "safety_limit",
+            "intent": "tab",
+            "download_button": true,
+            "is_capped": true
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "Summarize the individual order details for all customers in Sao Paulo during 2017, including product and pricing information.",
+        "actual_output": null,
+        "expected_output": "Based on the first 100 records (out of 1000+ total) matching your criteria, here is a summary of individual order details for customers in Sao Paulo during 2017:\n\nOrders include a variety of products with prices ranging from as low as 7.79 to as high as 610.\nOrders were placed throughout the year, with timestamps indicating purchases from January to December 2017.\nSome orders contain multiple items, as indicated by repeated order IDs with different product IDs.\n\nThe full dataset is available for download via the button below.\n\nNote: The full results exceeded our safety limit of 1000 records. Please run the following query directly in your database to get all requested records:\n```sql\n  SELECT\n  o.order_id,\n  oi.product_id,\n  oi.price,\n  oi.freight_value\n  FROM\n  fct_orders o\n  JOIN\n  fct_order_items oi ON o.order_id = oi.order_id\n  WHERE\n  LOWER(o.customer_city) = 'sao paulo'\n  AND o.is_valid_order = 1\n  AND YEAR(o.order_purchase_timestamp) = 2017\n  ORDER BY\n  o.order_id;\n```\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": "BND-02",
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "category": "Boundaries",
+            "ground_truth_sql": "SELECT \no.order_id, \noi.product_id, \noi.price, \noi.freight_value, \no.order_purchase_timestamp\nFROM \nfct_orders o\nJOIN \ndim_customers c ON o.customer_unique_id = c.customer_unique_id\nJOIN \nfct_order_items oi ON o.order_id = oi.order_id\nWHERE \nLOWER(c.customer_city) = 'sao paulo'\nAND o.order_purchase_timestamp >= '2017-01-01' \nAND o.order_purchase_timestamp < '2018-01-01'\nORDER BY \no.order_id;\n",
+            "limit_type": "standard_nl_limit",
+            "intent": "nl",
+            "download_button": true,
+            "is_capped": true
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "Show a table of the first 50 customers sorted by registration date, including their unique ID, city, state, first purchase date, and lifetime value.",
+        "actual_output": null,
+        "expected_output": "Showing the first 10 records out of 50 total matches found. The full dataset can be downloaded as a CSV below.\n[\n{\n  \"CUSTOMER_UNIQUE_ID\": \"b7d76e111c89f7ebf14761390f0f7d17\",\n  \"CUSTOMER_CITY\": \"boa vista\",\n  \"CUSTOMER_STATE\": \"rr\",\n  \"FIRST_PURCHASE_AT\": \"2016-09-04T21:15:19+02:00\",\n  \"LIFETIME_VALUE\": 136.23\n},\n{\n  \"CUSTOMER_UNIQUE_ID\": \"4854e9b3feff728c13ee5fc7d1547e92\",\n  \"CUSTOMER_CITY\": \"passo fundo\",\n  \"CUSTOMER_STATE\": \"rs\",\n  \"FIRST_PURCHASE_AT\": \"2016-09-05T00:15:34+02:00\",\n  \"LIFETIME_VALUE\": 0\n},\n{\n  \"CUSTOMER_UNIQUE_ID\": \"009b0127b727ab0ba422f6d9604487c7\",\n  \"CUSTOMER_CITY\": \"sao jose dos campos\",\n  \"CUSTOMER_STATE\": \"sp\",\n  \"FIRST_PURCHASE_AT\": \"2016-09-13T15:24:19+02:00\",\n  \"LIFETIME_VALUE\": 0\n},\n{\n  \"CUSTOMER_UNIQUE_ID\": \"830d5b7aaa3b6f1e9ad63703bec97d23\",\n  \"CUSTOMER_CITY\": \"sao joaquim da barra\",\n  \"CUSTOMER_STATE\": \"sp\",\n  \"FIRST_PURCHASE_AT\": \"2016-09-15T12:16:38+02:00\",\n  \"LIFETIME_VALUE\": 0\n},\n{\n  \"CUSTOMER_UNIQUE_ID\": \"0eb1ee9dba87f5b36b4613a65074337c\",\n  \"CUSTOMER_CITY\": \"sao paulo\",\n  \"CUSTOMER_STATE\": \"sp\",\n  \"FIRST_PURCHASE_AT\": \"2016-10-02T22:07:52+02:00\",\n  \"LIFETIME_VALUE\": 0\n},\n{\n  \"CUSTOMER_UNIQUE_ID\": \"32ea3bdedab835c3aa6cb68ce66565ef\",\n  \"CUSTOMER_CITY\": \"sao paulo\",\n  \"CUSTOMER_STATE\": \"sp\",\n  \"FIRST_PURCHASE_AT\": \"2016-10-03T09:44:50+02:00\",\n  \"LIFETIME_VALUE\": 137.16\n},\n{\n  \"CUSTOMER_UNIQUE_ID\": \"2f64e403852e6893ae37485d5fcacdaf\",\n  \"CUSTOMER_CITY\": \"panambi\",\n  \"CUSTOMER_STATE\": \"rs\",\n  \"FIRST_PURCHASE_AT\": \"2016-10-03T16:56:50+02:00\",\n  \"LIFETIME_VALUE\": 39.09\n},\n{\n  \"CUSTOMER_UNIQUE_ID\": \"b8b8726af116a5cfb35b0315ecef9172\",\n  \"CUSTOMER_CITY\": \"rio de janeiro\",\n  \"CUSTOMER_STATE\": \"rj\",\n  \"FIRST_PURCHASE_AT\": \"2016-10-03T21:01:41+02:00\",\n  \"LIFETIME_VALUE\": 0\n},\n{\n  \"CUSTOMER_UNIQUE_ID\": \"61db744d2f835035a5625b59350c6b63\",\n  \"CUSTOMER_CITY\": \"porto alegre\",\n  \"CUSTOMER_STATE\": \"rs\",\n  \"FIRST_PURCHASE_AT\": \"2016-10-03T21:13:36+02:00\",\n  \"LIFETIME_VALUE\": 53.73\n},\n{\n  \"CUSTOMER_UNIQUE_ID\": \"8d3a54507421dbd2ce0a1d58046826e0\",\n  \"CUSTOMER_CITY\": \"hortolandia\",\n  \"CUSTOMER_STATE\": \"sp\",\n  \"FIRST_PURCHASE_AT\": \"2016-10-03T22:06:03+02:00\",\n  \"LIFETIME_VALUE\": 133.46\n}\n]\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": "BND-03",
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "category": "Boundaries",
+            "ground_truth_sql": "SELECT\nc.customer_unique_id,\nc.customer_city,\nc.customer_state,\nc.first_purchase_at,\nc.lifetime_value\nFROM dim_customers AS c\nORDER BY c.first_purchase_at ASC\nLIMIT 50;\n",
+            "limit_type": "standard_tab_limit",
+            "intent": "tab",
+            "download_button": true,
+            "is_capped": false
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "Summarize all reviews that mention the word 'good'.",
+        "actual_output": null,
+        "expected_output": "Based on the analysis of the top 100 most relevant reviews (out of 339 total), here is a summary of the reviews mentioning the word 'good'. The full dataset can be downloaded for further analysis.\n\n1. Product Quality: The majority of reviews highlight the product quality positively, often using terms like \"produto bom\" (good product) and \"muito bom\" (very good). Customers frequently express satisfaction with the product meeting their expectations.\n\n2. Recommendations: A significant number of reviews include recommendations, with many customers stating \"recomendo\" (I recommend) alongside their positive comments about the product's quality. This suggests a strong word-of-mouth endorsement among buyers.\n\n3. Overall Experience: Several reviews mention a \"boa compra\" (good purchase) or \"ótima compra\" (great purchase), indicating that customers are generally pleased with their buying experience. This includes aspects like the reliability of the product and the service received.\n\n4. Delivery and Service: While not as prevalent, there are mentions of \"entrega boa\" (good delivery), suggesting that some customers are satisfied with the delivery process, although this is not a dominant theme.\n\n5. Trust and Reliability: Some reviews emphasize the trustworthiness of the product and the seller, using terms like \"confiável\" (reliable), which adds to the overall positive sentiment.\n\nOverall, the sentiment in these reviews is predominantly positive, with a strong emphasis on product quality and customer satisfaction.\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": "BND-04",
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "category": "Boundaries",
+            "ground_truth_sql": "WITH semantic_matches AS (\n    SELECT \n        r.review_score,\n        r.review_comment_message,\n        VECTOR_COSINE_SIMILARITY(\n            e.review_combined_text_embedding, \n            CAST([QUERY_VECTOR] AS VECTOR(FLOAT, 1536))\n        ) as similarity_score\n    FROM dim_reviews r\n    JOIN dim_review_embeddings e ON r.order_id = e.order_id\n    WHERE r.review_comment_message IS NOT NULL\n)\nSELECT \n    review_score, \n    review_comment_message\nFROM semantic_matches\nWHERE similarity_score >= 0.4\nORDER BY similarity_score DESC;\n",
+            "limit_type": "semantic_nl_limit",
+            "intent": "semantic_nl",
+            "download_button": true,
+            "is_capped": false
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "Give me a table of all reviews that mention 'delivery'.",
+        "actual_output": null,
+        "expected_output": "Showing the first 10 records out of 1000+ total matches found. The full dataset can be downloaded as a CSV below.\n\n---\nNote: The full results exceeded our safety limit of 1000 records. Please run the following query directly in your database to get all requested records:\n```sql\nWITH semantic_matches AS (\n    SELECT \n        r.review_score,\n        r.review_comment_message,\n        VECTOR_COSINE_SIMILARITY(\n            e.review_combined_text_embedding, \n            CAST([QUERY_VECTOR] AS VECTOR(FLOAT, 1536))\n        ) as similarity_score\n    FROM dim_reviews r\n    JOIN dim_review_embeddings e ON r.order_id = e.order_id\n    WHERE r.review_comment_message IS NOT NULL\n)\nSELECT \n    review_score, \n    review_comment_message\nFROM semantic_matches\nWHERE similarity_score >= 0.4\nORDER BY similarity_score DESC;\n```\n\n[\n{\n  \"REVIEW_SCORE\": 5,\n  \"REVIEW_COMMENT_MESSAGE\": \"Entrega pontual\"\n},\n{\n  \"REVIEW_SCORE\": 4,\n  \"REVIEW_COMMENT_MESSAGE\": \"entrega rapida\"\n},\n{\n  \"REVIEW_SCORE\": 5,\n  \"REVIEW_COMMENT_MESSAGE\": \"entrega rapida\"\n},\n{\n  \"REVIEW_SCORE\": 4,\n  \"REVIEW_COMMENT_MESSAGE\": \"entrega rapida\"\n},\n{\n  \"REVIEW_SCORE\": 5,\n  \"REVIEW_COMMENT_MESSAGE\": \"entrega rapida\"\n},\n{\n  \"REVIEW_SCORE\": 4,\n  \"REVIEW_COMMENT_MESSAGE\": \"entrega rapida\"\n},\n{\n  \"REVIEW_SCORE\": 5,\n  \"REVIEW_COMMENT_MESSAGE\": \"Entrega top\"\n},\n{\n  \"REVIEW_SCORE\": 5,\n  \"REVIEW_COMMENT_MESSAGE\": \"Entrega excelente\"\n},\n{\n  \"REVIEW_SCORE\": 4,\n  \"REVIEW_COMMENT_MESSAGE\": \"entregue, td ok\"\n},\n{\n  \"REVIEW_SCORE\": 4,\n  \"REVIEW_COMMENT_MESSAGE\": \"Entrega como combinado...\"\n}\n]\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": "BND-05",
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "category": "Boundaries",
+            "ground_truth_sql": "WITH semantic_matches AS (\n    SELECT \n        r.review_score,\n        r.review_comment_message,\n        VECTOR_COSINE_SIMILARITY(\n            e.review_combined_text_embedding, \n            CAST([QUERY_VECTOR] AS VECTOR(FLOAT, 1536))\n        ) as similarity_score\n    FROM dim_reviews r\n    JOIN dim_review_embeddings e ON r.order_id = e.order_id\n    WHERE r.review_comment_message IS NOT NULL\n)\nSELECT \n    review_score, \n    review_comment_message\nFROM semantic_matches\nWHERE similarity_score >= 0.4\nORDER BY similarity_score DESC;\n",
+            "limit_type": "semantic_tab_limit",
+            "intent": "semantic_tab",
+            "download_button": true,
+            "is_capped": true
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "How many orders were placed by customers in Sao Palo?",
+        "actual_output": null,
+        "expected_output": "A total of 15,295 orders were placed by customers in Sao Paulo.\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": "FZY-01",
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "category": "Fuzzy Matching",
+            "ground_truth_sql": "SELECT COUNT(o.order_id) AS order_count\nFROM fct_orders o\nJOIN dim_customers c ON o.customer_unique_id = c.customer_unique_id\nWHERE EDITDISTANCE(LOWER(c.customer_city), LOWER('Sao Paulo')) <= 2\nAND o.is_valid_order = 1\nORDER BY order_count DESC;\n",
+            "limit_type": "standard_nl_limit",
+            "intent": "nl",
+            "download_button": false,
+            "is_capped": false,
+            "is_editdistance": true
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "List all items sold in the 'bed bath tabl' category.",
+        "actual_output": null,
+        "expected_output": "Showing the first 10 records out of 1000+ total matches found. The full dataset can be downloaded as a CSV below.\n\nNote: The full results exceeded our safety limit of 1000 records. Please run the following query directly in your database to get all requested records:\n```sql\nSELECT \noi.order_id, \noi.product_id, \noi.price, \noi.freight_value\nFROM \nfct_order_items oi\nWHERE \nEDITDISTANCE(LOWER(oi.product_category), LOWER('bed bath tabl')) <= 2\nORDER BY \noi.order_id;\n```\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": "FZY-02",
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "category": "Fuzzy Matching",
+            "ground_truth_sql": "SELECT \noi.order_id, \noi.product_id, \noi.price, \noi.freight_value\nFROM \nfct_order_items oi\nWHERE \nEDITDISTANCE(LOWER(oi.product_category), LOWER('bed bath tabl')) <= 2\nORDER BY \noi.order_id;\n",
+            "limit_type": "standard_tab_limit",
+            "intent": "tab",
+            "download_button": true,
+            "is_capped": true,
+            "is_editdistance": true
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "What is the total revenue from customers in the state of Minias Gerais?",
+        "actual_output": null,
+        "expected_output": "The total revenue from customers in the state of Minas Gerais is 1,573,269.18 BRL.\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": "FZY-03",
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "category": "Fuzzy Matching",
+            "ground_truth_sql": "SELECT SUM(oi.price) AS total_revenue\nFROM fct_order_items oi\nJOIN fct_orders o ON oi.order_id = o.order_id\nJOIN dim_customers c ON o.customer_unique_id = c.customer_unique_id\nWHERE LOWER(c.customer_state) = 'mg'\nAND o.is_valid_order = 1;\n",
+            "limit_type": "standard_nl_limit",
+            "intent": "nl",
+            "download_button": false,
+            "is_capped": false,
+            "is_editdistance": true
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "Show the top 3 cities with the most orders for 'beuty' products.",
+        "actual_output": null,
+        "expected_output": "Here are the tabular results you requested.\n[\n{\n  \"CUSTOMER_CITY\": \"sao paulo\",\n  \"ORDER_COUNT\": 1742\n},\n{\n  \"CUSTOMER_CITY\": \"rio de janeiro\",\n  \"ORDER_COUNT\": 571\n},\n{\n  \"CUSTOMER_CITY\": \"belo horizonte\",\n  \"ORDER_COUNT\": 274\n}\n]\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": "FZY-04",
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "category": "Fuzzy Matching",
+            "ground_truth_sql": "SELECT o.customer_city, COUNT(*) AS order_count\nFROM fct_order_items oi\nJOIN fct_orders o ON oi.order_id = o.order_id\nWHERE o.is_valid_order = 1\n  AND oi.product_category ILIKE '%beauty%'\nGROUP BY o.customer_city\nORDER BY order_count DESC\nLIMIT 3;\n",
+            "limit_type": "standard_tab_limit",
+            "intent": "tab",
+            "download_button": false,
+            "is_capped": false,
+            "is_editdistance": true
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "Summarize the average delivery time for customers in 'Rio de Janero' for orders with a 'shippd' status.",
+        "actual_output": null,
+        "expected_output": "No data was found for orders with a 'shipped' status and customers in 'Rio de Janeiro'.\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": "FZY-05",
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "category": "Fuzzy Matching",
+            "ground_truth_sql": "SELECT AVG(o.actual_delivery_time_days) AS average_delivery_time\nFROM fct_orders o\nJOIN dim_customers c ON o.customer_unique_id = c.customer_unique_id\nWHERE o.is_valid_order = 1\n  AND EDITDISTANCE(LOWER(o.order_status), 'shipped') <= 2\n  AND EDITDISTANCE(LOWER(c.customer_city), 'rio de janeiro') <= 2;\n",
+            "limit_type": "standard_nl_limit",
+            "intent": "nl",
+            "download_button": false,
+            "is_capped": false,
+            "is_editdistance": true
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "Summarize the customer distribution across different Brazilian states.",
+        "actual_output": null,
+        "expected_output": "São Paulo (SP) - 40296 customers, 41.93% \nRio de Janeiro (RJ) - 12381 customers, 12.88% \nMinas Gerais (MG) - 11252 customers, 11.71%\nRio Grande do Sul (RS) - 5276 customers, 5.49%  \nParaná (PR) - 4879 customers, 5.08%\n\nThese five states account for roughly 77 % of all customers.  \nThe remaining 22 states together hold the remaining 23 %.\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": "NL-01",
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "category": "Standard NL",
+            "ground_truth_sql": "SELECT\n  c.customer_state AS state,\n  COUNT(*) AS customer_count,\n  ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER (), 2) AS percentage_of_total\nFROM dim_customers c\nGROUP BY c.customer_state\nORDER BY customer_count DESC;\n",
+            "limit_type": "standard_nl_limit",
+            "intent": "nl",
+            "download_button": false
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "Explain the difference in average order value between new and returning customers.",
+        "actual_output": null,
+        "expected_output": "The data show that new customers spend more on average per order than returning customers.\n\nAverage order value for new customers: 159.31 BRL\nAverage order value for returning customers: 145.82 BRL\nDifference: New customers' orders are on average 13.48 BRL higher than those of returning customers.\n\nThis suggests that when customers first make a purchase, they tend to order more (or higher-priced items) than they do in subsequent visits. It could reflect a higher initial order size, a promotional incentive for first-time buyers, or a difference in product mix between first-time and repeat purchases.\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": "NL-02",
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "category": "Standard NL",
+            "ground_truth_sql": "SELECT \nAVG(CASE WHEN dc.is_returning_customer = 1 THEN dc.average_order_value END) AS returning_customers_avg_order_value,\nAVG(CASE WHEN dc.is_returning_customer = 0 THEN dc.average_order_value END) AS new_customers_avg_order_value,\nAVG(CASE WHEN dc.is_returning_customer = 1 THEN dc.average_order_value END) -\nAVG(CASE WHEN dc.is_returning_customer = 0 THEN dc.average_order_value END) AS difference_in_avg_order_value\nFROM dim_customers dc;\n",
+            "limit_type": "standard_nl_limit",
+            "intent": "nl",
+            "download_button": false
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "Provide a summary of revenue trends for the first quarter of 2018.",
+        "actual_output": null,
+        "expected_output": "In the first quarter of 2018, the revenue trends were as follows:\n\n- January 2018: The total revenue was 945,456.29 BRL.\n- February 2018: The total revenue decreased to 837,895.43 BRL.\n- March 2018: The total revenue increased to 981,051.06 BRL.\n\nOverall, there was a dip in revenue in February, followed by a recovery and increase in March.\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": "NL-03",
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "category": "Standard NL",
+            "ground_truth_sql": "SELECT \n  DATE_TRUNC('month', o.order_purchase_timestamp) AS month,\n  SUM(oi.price) AS total_revenue\nFROM \n  fct_order_items oi\nJOIN \n  fct_orders o ON oi.order_id = o.order_id\nWHERE \n  o.is_valid_order = 1\n  AND o.order_purchase_timestamp >= '2018-01-01'\n  AND o.order_purchase_timestamp < '2018-04-01'\nGROUP BY month\nORDER BY month;\n",
+            "limit_type": "standard_nl_limit",
+            "intent": "nl",
+            "download_button": false
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "Compare the delivery performance and delay metrics between 'SP' and 'RJ' states.",
+        "actual_output": null,
+        "expected_output": "On-time delivery performance\nSP: 92.66% of orders were delivered on time.  \nRJ: 84.16% of orders were delivered on time.  \nSP outperforms RJ by about 8.5 percentage points.\n\nAverage delay  \nSP: 0.37 days delayed on average.  \nRJ: 1.59 days delayed on average.  \nSP experiences roughly 1.2 days less delay than RJ.\n\nDelivery time  \nSP: Average actual delivery time is 8.70 days, with an estimated time of 19.82 days.  \nRJ: Average actual delivery time is 15.24 days, with an estimated time of 27.00 days.  \nSP's deliveries are both faster and closer to the estimated schedule than RJ's.\n\nSummary\nSP shows stronger delivery performance, with higher on-time rates, shorter delays, and quicker fulfillment compared to RJ.\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": "NL-04",
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "category": "Standard NL",
+            "ground_truth_sql": "SELECT\nLOWER(o.customer_state) AS state,\nCOUNT(*) AS total_orders,\nSUM(o.is_delivered_on_time) AS on_time_deliveries,\nAVG(o.is_delivered_on_time) * 100 AS on_time_percentage,\nAVG(o.days_delayed) AS avg_days_delayed,\nAVG(o.actual_delivery_time_days) AS avg_actual_delivery_days,\nAVG(o.estimated_delivery_time_days) AS avg_estimated_delivery_days\nFROM fct_orders AS o\nWHERE LOWER(o.customer_state) IN ('sp', 'rj')\nAND o.is_valid_order = 1\nGROUP BY LOWER(o.customer_state)\nORDER BY state;\n",
+            "limit_type": "standard_nl_limit",
+            "intent": "nl",
+            "download_button": false
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "Summarize the top-performing product categories in terms of total sales volume.",
+        "actual_output": null,
+        "expected_output": "Top-Performing Product Categories by Total Sales Volume\n\n\nRank: 1\nProduct Category: Health Beauty\nTotal Sales Volume: 1,255,695.13 BRL\nItems Sold: 9,634\n\nRank: 2\nProduct Category: Watches Gifts\nTotal Sales Volume: 1,198,185.21 BRL\nItems Sold: 5,970\n\nRank: 3\nProduct Category: Bed Bath Table\nTotal Sales Volume: 1,035,964.06 BRL\nItems Sold: 11,097\n\nRank: 4\nProduct Category: Sports Leisure\nTotal Sales Volume: 979,740.92 BRL\nItems Sold: 8,590\n\nRank: 5\nProduct Category: Computers Accessories\nTotal Sales Volume: 904,322.02 BRL\nItems Sold: 7,781\n\nKey Takeaways\n\nThe 'Health Beauty' category leads by a significant margin, followed closely by 'Watches Gifts' and 'Bed Bath Table'.\nHome-related categories (Bed Bath Table, Furniture Decor, Housewares) collectively contribute a large portion of sales.\nTech and leisure categories (Computers Accessories, Sports Leisure, Telephony) also perform strongly.\nThese top five categories account for roughly 70% of the total sales volume across all product categories.\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": "NL-05",
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "category": "Standard NL",
+            "ground_truth_sql": "SELECT\noi.product_category,\nSUM(oi.price) AS total_sales_volume,\nCOUNT(*) AS items_sold\nFROM fct_order_items AS oi\nJOIN fct_orders AS o\nON oi.order_id = o.order_id\nWHERE o.is_valid_order = 1\nGROUP BY oi.product_category\nORDER BY total_sales_volume DESC;\n",
+            "limit_type": "standard_nl_limit",
+            "intent": "nl",
+            "download_button": true
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "What are the most common complaints customers have about shipping and delivery?",
+        "actual_output": null,
+        "expected_output": "Based on the analysis of the top 100 most relevant reviews (out of 1000+ total), here are the common complaints customers have about shipping and delivery. The full dataset can be downloaded for further insights.\n\n1. Delayed Deliveries: The majority of reviews express frustration with delays in delivery. Many customers mention that their orders did not arrive within the expected timeframe, leading to dissatisfaction and repeated follow-ups with customer service.\n\n2. Non-Delivery: A significant number of reviews report issues where products were marked as delivered but were not actually received by the customers. This has led to confusion and the need for customers to contact support to resolve the discrepancies.\n\n3. Incomplete Deliveries: Several customers have complained about receiving incomplete orders, where only part of their purchase was delivered. This has caused inconvenience and required additional communication with the seller to rectify the situation.\n\n4. Communication Issues: There are numerous complaints about poor communication regarding delivery status. Customers have expressed frustration over not receiving timely updates or responses to their inquiries about their shipments.\n\n5. Incorrect Deliveries: Some reviews highlight instances where the wrong product was delivered, necessitating returns or exchanges, which further delayed the receipt of the correct items.\n\n6. Issues with Delivery Services: A few reviews mention dissatisfaction with the delivery service itself, particularly when products were not delivered to the customer's residence, requiring them to pick up items from a postal office despite having paid for home delivery.\n\nThese themes indicate that the primary areas of concern for customers revolve around timeliness, accuracy, and communication in the delivery process.\n\n---\nNote: The full results exceeded our safety limit of 1000 records. Please run the following query directly in your database to get all requested records:\n```sql\nWITH semantic_matches AS (\n    SELECT \n        r.review_score,\n        r.review_comment_message,\n        VECTOR_COSINE_SIMILARITY(\n            e.review_combined_text_embedding, \n            CAST([QUERY_VECTOR] AS VECTOR(FLOAT, 1536))\n        ) as similarity_score\n    FROM dim_reviews r\n    JOIN dim_review_embeddings e ON r.order_id = e.order_id\n    WHERE r.review_comment_message IS NOT NULL\n    AND r.review_score <= 3\n)\nSELECT \n    review_score, \n    review_comment_message\nFROM semantic_matches\nWHERE similarity_score >= 0.4\nORDER BY similarity_score DESC;\n```\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": "SEM-01",
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "category": "Semantic",
+            "ground_truth_sql": "WITH semantic_matches AS (\nSELECT \nr.review_score,\nr.review_comment_message,\nVECTOR_COSINE_SIMILARITY(\ne.review_combined_text_embedding, \nCAST([QUERY_VECTOR] AS VECTOR(FLOAT, 1536))\n) as similarity_score\nFROM dim_reviews r\nJOIN dim_review_embeddings e ON r.order_id = e.order_id\nWHERE r.review_comment_message IS NOT NULL\nAND r.review_score <= 3\n)\nSELECT \nreview_score, \nreview_comment_message\nFROM semantic_matches\nWHERE similarity_score >= 0.4\nORDER BY similarity_score DESC;\n",
+            "limit_type": "semantic_nl_limit",
+            "intent": "semantic_nl"
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "Summarize the positive feedback specifically for 'electronics' products.",
+        "actual_output": null,
+        "expected_output": "Based on the analysis of the top 100 most relevant reviews (out of 229 total), here is a summary of the positive feedback for electronics products. The full dataset can be downloaded for more detailed insights.\n\n1. Product Quality and Functionality: The majority of reviews highlight satisfaction with the quality and functionality of the electronics products. Customers frequently mention that the products meet or exceed their expectations, with specific praise for items like remote controls and other electronic devices functioning as described.\n\n2. Delivery and Packaging: Many reviews commend the prompt delivery, often noting that products arrived before the expected date. Customers appreciate the careful packaging, which ensures that items arrive in perfect condition.\n\n3. Customer Service: Positive feedback is also directed towards customer service, with several reviews mentioning excellent communication and support from sellers. Customers feel valued and well-attended to, which enhances their overall shopping experience.\n\n4. Value for Money: A significant number of reviews express satisfaction with the value for money offered by these electronics products. Customers feel that the products are worth the price, and some even mention receiving additional items, like batteries, as a bonus.\n\n5. Reliability and Trust: Trust in the marketplace and sellers is a recurring theme. Customers express confidence in the reliability of the sellers and the accuracy of product descriptions, which encourages repeat purchases and recommendations to others.\n\nOverall, the positive feedback for electronics products is centered around high product quality, efficient delivery, excellent customer service, good value for money, and a trustworthy shopping experience.\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": "SEM-02",
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "category": "Semantic",
+            "ground_truth_sql": "WITH semantic_matches AS (\nSELECT \nr.review_score,\nr.review_comment_message,\nVECTOR_COSINE_SIMILARITY(\ne.review_combined_text_embedding, \nCAST([QUERY_VECTOR] AS VECTOR(FLOAT, 1536))\n) as similarity_score\nFROM dim_reviews r\nJOIN dim_review_embeddings e ON r.order_id = e.order_id\nJOIN fct_order_items oi ON r.order_id = oi.order_id\nWHERE r.review_comment_message IS NOT NULL\nAND r.review_score > 3\nAND oi.product_category = 'electronics'\n)\nSELECT \nreview_score, \nreview_comment_message\nFROM semantic_matches\nWHERE similarity_score >= 0.4\nORDER BY similarity_score DESC;\n",
+            "limit_type": "semantic_nl_limit",
+            "intent": "semantic_nl",
+            "download_button": true
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "Give me a table of 5 reviews that specifically mention 'damaged' or 'broken' items.",
+        "actual_output": null,
+        "expected_output": "Here are the tabular results you requested.\n[\n{\n  \"REVIEW_SCORE\": 1,\n  \"REVIEW_COMMENT_MESSAGE\": \"Produto avariado, quebrado\"\n},\n{\n  \"REVIEW_SCORE\": 1,\n  \"REVIEW_COMMENT_MESSAGE\": \"chegou quebrado\"\n},\n{\n  \"REVIEW_SCORE\": 1,\n  \"REVIEW_COMMENT_MESSAGE\": \"Veio quebrado\"\n},\n{\n  \"REVIEW_SCORE\": 1,\n  \"REVIEW_COMMENT_MESSAGE\": \"Produto que sinais de uso , manchado , marcado e quebrado \"\n},\n{\n  \"REVIEW_SCORE\": 2,\n  \"REVIEW_COMMENT_MESSAGE\": \"Um dos cubos veio danificado(tipo amassado)\"\n}\n]\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": "SEM-03",
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "category": "Semantic",
+            "ground_truth_sql": "WITH semantic_matches AS (\nSELECT \nr.review_score,\nr.review_comment_message,\nVECTOR_COSINE_SIMILARITY(\ne.review_combined_text_embedding, \nCAST([QUERY_VECTOR] AS VECTOR(FLOAT, 1536))\n) as similarity_score\nFROM dim_reviews r\nJOIN dim_review_embeddings e ON r.order_id = e.order_id\nWHERE r.review_comment_message IS NOT NULL\nAND r.review_score <= 3\n)\nSELECT \nreview_score, \nreview_comment_message\nFROM semantic_matches\nWHERE similarity_score >= 0.4\nORDER BY similarity_score DESC\nLIMIT 5;\n",
+            "limit_type": "semantic_tab_limit",
+            "intent": "semantic_tab"
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "What is the general feedback regarding the quality of 'health beauty' products?",
+        "actual_output": null,
+        "expected_output": "Based on the analysis of the top 100 most relevant reviews (out of 940 total), the general feedback regarding the quality of 'health beauty' products is overwhelmingly positive. The majority of reviews highlight the high quality of the products, with many customers using terms like \"ótima qualidade\" (excellent quality) and \"produto maravilhoso\" (wonderful product). \n\nSeveral reviews also emphasize the effectiveness of the products, noting that they meet or exceed expectations. Customers frequently express satisfaction with the product's performance, often recommending them to others. Additionally, a significant number of reviews mention the timely delivery and good packaging, which enhances the overall customer experience.\n\nThere are a few isolated complaints, primarily concerning issues with packaging or product condition upon arrival, but these are rare compared to the positive feedback. Overall, the sentiment towards 'health beauty' products is highly favorable, with customers expressing a high level of satisfaction with their purchases. \n\nFor a more detailed analysis or to explore the full dataset, you can download the complete set of reviews.\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": "SEM-04",
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "category": "Semantic",
+            "ground_truth_sql": "WITH semantic_matches AS (\n    SELECT \n        r.review_score,\n        r.review_comment_message,\n        VECTOR_COSINE_SIMILARITY(\n            e.review_combined_text_embedding, \n            CAST([QUERY_VECTOR] AS VECTOR(FLOAT, 1536))\n        ) as similarity_score\n    FROM dim_reviews r\n    JOIN dim_review_embeddings e ON r.order_id = e.order_id\n    JOIN fct_order_items oi ON r.order_id = oi.order_id\n    WHERE r.review_comment_message IS NOT NULL\n    AND oi.product_category = 'health beauty'\n)\nSELECT \n    review_score, \n    review_comment_message\nFROM semantic_matches\nWHERE similarity_score >= 0.4\nORDER BY similarity_score DESC;\n",
+            "limit_type": "semantic_nl_limit",
+            "intent": "semantic_nl",
+            "download_button": true
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "Find and summarize reviews that mention issues with 'customer service' or 'refunds'.",
+        "actual_output": null,
+        "expected_output": "Based on the analysis of the top 100 most relevant reviews (out of 1000+ total), here is a summary of the issues related to 'customer service' and 'refunds'. The full dataset can be downloaded for a more comprehensive view.\n\n1. Refund Issues: The majority of reviews express dissatisfaction with the refund process. Many customers reported not receiving their refunds after product delivery issues or cancellations. There are frequent mentions of requests for refunds being ignored or delayed, causing significant frustration among customers.\n\n2. Customer Service Complaints: A significant number of reviews highlight poor customer service experiences. Customers often describe the service as unresponsive, with difficulties in reaching support through phone or email. There are reports of unhelpful or dismissive interactions with customer service representatives, which exacerbates the frustration over unresolved issues.\n\n3. Delivery Problems: Many reviews also mention problems with product delivery, such as receiving incorrect items or not receiving products at all. These delivery issues are often linked to the complaints about refunds and customer service, as customers struggle to get resolutions or compensations for these problems.\n\nOverall, the reviews indicate a prevalent dissatisfaction with both the refund process and customer service, with many customers feeling neglected and unsupported in resolving their issues.\n\n---\nNote: The full results exceeded our safety limit of 1000 records. Please run the following query directly in your database to get all requested records:\n```sql\nWITH semantic_matches AS (\n    SELECT \n        r.review_score,\n        r.review_comment_message,\n        VECTOR_COSINE_SIMILARITY(\n            e.review_combined_text_embedding, \n            CAST([QUERY_VECTOR] AS VECTOR(FLOAT, 1536))\n        ) as similarity_score\n    FROM dim_reviews r\n    JOIN dim_review_embeddings e ON r.order_id = e.order_id\n    WHERE r.review_comment_message IS NOT NULL\n    AND r.review_score <= 3\n)\nSELECT \n    review_score, \n    review_comment_message\nFROM semantic_matches\nWHERE similarity_score >= 0.4\nORDER BY similarity_score DESC;\n```\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": "SEM-05",
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "category": "Semantic",
+            "ground_truth_sql": "WITH semantic_matches AS (\n    SELECT \n        r.review_score,\n        r.review_comment_message,\n        VECTOR_COSINE_SIMILARITY(\n            e.review_combined_text_embedding, \n            CAST([QUERY_VECTOR] AS VECTOR(FLOAT, 1536))\n        ) as similarity_score\n    FROM dim_reviews r\n    JOIN dim_review_embeddings e ON r.order_id = e.order_id\n    WHERE r.review_comment_message IS NOT NULL\n    AND r.review_score <= 3\n)\nSELECT \n    review_score, \n    review_comment_message\nFROM semantic_matches\nWHERE similarity_score >= 0.4\nORDER BY similarity_score DESC;\n",
+            "limit_type": "semantic_nl_limit",
+            "intent": "semantic_nl"
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "Give me a table of the top 5 cities with the most customers.",
+        "actual_output": null,
+        "expected_output": "Here are the tabular results you requested.\n[\n{\n\"CUSTOMER_CITY\": \"sao paulo\",\n\"CUSTOMER_COUNT\": 14973\n},\n{\n\"CUSTOMER_CITY\": \"rio de janeiro\",\n\"CUSTOMER_COUNT\": 6613\n},\n{\n\"CUSTOMER_CITY\": \"belo horizonte\",\n\"CUSTOMER_COUNT\": 2669\n},\n{\n\"CUSTOMER_CITY\": \"brasilia\",\n\"CUSTOMER_COUNT\": 2065\n},\n{\n\"CUSTOMER_CITY\": \"curitiba\",\n\"CUSTOMER_COUNT\": 1462\n}\n]\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": "TAB-01",
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "category": "Standard Tab",
+            "ground_truth_sql": "SELECT \ndc.customer_city, \nCOUNT(dc.customer_unique_id) AS customer_count\nFROM \ndim_customers dc\nGROUP BY \ndc.customer_city\nORDER BY \ncustomer_count DESC\nLIMIT 5;\n",
+            "limit_type": "standard_tab_limit",
+            "intent": "tab"
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "Show a table with the count of orders for each current order status including invalid orders.",
+        "actual_output": null,
+        "expected_output": "Here are the tabular results you requested.\n[\n{\n  \"ORDER_STATUS\": \"approved\",\n  \"ORDER_COUNT\": 2\n},\n{\n  \"ORDER_STATUS\": \"canceled\",\n  \"ORDER_COUNT\": 625\n},\n{\n  \"ORDER_STATUS\": \"created\",\n  \"ORDER_COUNT\": 5\n},\n{\n  \"ORDER_STATUS\": \"delivered\",\n  \"ORDER_COUNT\": 96478\n},\n{\n  \"ORDER_STATUS\": \"invoiced\",\n  \"ORDER_COUNT\": 314\n},\n{\n  \"ORDER_STATUS\": \"processing\",\n  \"ORDER_COUNT\": 301\n},\n{\n  \"ORDER_STATUS\": \"shipped\",\n  \"ORDER_COUNT\": 1107\n},\n{\n  \"ORDER_STATUS\": \"unavailable\",\n  \"ORDER_COUNT\": 609\n}\n]\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": "TAB-02",
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "category": "Standard Tab",
+            "ground_truth_sql": "SELECT o.order_status, COUNT(o.order_id) AS order_count\nFROM fct_orders o\nGROUP BY o.order_status\nORDER BY o.order_status;\n",
+            "limit_type": "standard_tab_limit",
+            "intent": "tab"
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "List the top 5 customers by lifetime value, and include their city, state, and the total number of distinct product categories they have shopped from.",
+        "actual_output": null,
+        "expected_output": "Here are the tabular results you requested.\n[\n{\n  \"CUSTOMER_UNIQUE_ID\": \"0a0a92112bd4c708ca5fde585afaa872\",\n  \"CUSTOMER_CITY\": \"rio de janeiro\",\n  \"CUSTOMER_STATE\": \"rj\",\n  \"LIFETIME_VALUE\": 13664.08,\n  \"DISTINCT_PRODUCT_CATEGORIES\": 1\n},\n{\n  \"CUSTOMER_UNIQUE_ID\": \"da122df9eeddfedc1dc1f5349a1a690c\",\n  \"CUSTOMER_CITY\": \"araruama\",\n  \"CUSTOMER_STATE\": \"rj\",\n  \"LIFETIME_VALUE\": 7571.63,\n  \"DISTINCT_PRODUCT_CATEGORIES\": 1\n},\n{\n  \"CUSTOMER_UNIQUE_ID\": \"763c8b1c9c68a0229c42c9fc6f662b93\",\n  \"CUSTOMER_CITY\": \"vila velha\",\n  \"CUSTOMER_STATE\": \"es\",\n  \"LIFETIME_VALUE\": 7274.88,\n  \"DISTINCT_PRODUCT_CATEGORIES\": 1\n},\n{\n  \"CUSTOMER_UNIQUE_ID\": \"dc4802a71eae9be1dd28f5d788ceb526\",\n  \"CUSTOMER_CITY\": \"campo grande\",\n  \"CUSTOMER_STATE\": \"ms\",\n  \"LIFETIME_VALUE\": 6929.31,\n  \"DISTINCT_PRODUCT_CATEGORIES\": 1\n},\n{\n  \"CUSTOMER_UNIQUE_ID\": \"459bef486812aa25204be022145caa62\",\n  \"CUSTOMER_CITY\": \"vitoria\",\n  \"CUSTOMER_STATE\": \"es\",\n  \"LIFETIME_VALUE\": 6922.21,\n  \"DISTINCT_PRODUCT_CATEGORIES\": 1\n}\n]\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": "TAB-03",
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "category": "Standard Tab",
+            "ground_truth_sql": "SELECT \n  c.customer_unique_id, \n  c.customer_city, \n  c.customer_state, \n  c.lifetime_value, \n  COUNT(DISTINCT oi.product_category) AS distinct_product_categories\n  FROM \n  dim_customers c\n  JOIN \n  fct_orders o ON c.customer_unique_id = o.customer_unique_id\n  JOIN \n  fct_order_items oi ON o.order_id = oi.order_id\n  GROUP BY \n  c.customer_unique_id, c.customer_city, c.customer_state, c.lifetime_value\n  ORDER BY \n  c.lifetime_value DESC\n  LIMIT 5;\n",
+            "limit_type": "standard_tab_limit",
+            "intent": "tab"
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "List the top 3 cities based on total revenue generated from items sold in the 'watches gifts' category to 'returning customers'.",
+        "actual_output": null,
+        "expected_output": "Here are the tabular results you requested.\n[\n  {\n    \"CUSTOMER_CITY\": \"sao paulo\",\n    \"TOTAL_REVENUE\": 8600.4\n  },\n  {\n    \"CUSTOMER_CITY\": \"rio de janeiro\",\n    \"TOTAL_REVENUE\": 4117.8\n  },\n  {\n    \"CUSTOMER_CITY\": \"porto alegre\",\n    \"TOTAL_REVENUE\": 1885.8\n  }\n]\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": "TAB-04",
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "category": "Standard Tab",
+            "ground_truth_sql": "SELECT \n    LOWER(dc.customer_city) AS city, \n    SUM(foi.price) AS total_revenue\nFROM \n    dim_customers dc\nJOIN \n    fct_orders fo ON dc.customer_unique_id = fo.customer_unique_id\nJOIN \n    fct_order_items foi ON fo.order_id = foi.order_id\nWHERE \n    dc.is_returning_customer = 1\n    AND LOWER(foi.product_category) = 'watches gifts'\n    AND fo.is_valid_order = 1\nGROUP BY \n    LOWER(dc.customer_city)\nORDER BY \n    total_revenue DESC\nLIMIT 3;\n",
+            "limit_type": "standard_tab_limit",
+            "intent": "tab"
+        },
+        "custom_column_key_values": null
+    },
+    {
+        "input": "Show a comparison table of the average review score for valid orders that used a voucher versus those that didn't, for the top 5 states with the most valid orders.",
+        "actual_output": null,
+        "expected_output": "Here are the tabular results you requested.\n[\n{\n  \"CUSTOMER_STATE\": \"mg\",\n  \"AVG_REVIEW_SCORE_WITH_VOUCHER\": 4.108490566038,\n  \"AVG_REVIEW_SCORE_WITHOUT_VOUCHER\": 4.152185693642\n},\n{\n  \"CUSTOMER_STATE\": \"pr\",\n  \"AVG_REVIEW_SCORE_WITH_VOUCHER\": 4.262886597938,\n  \"AVG_REVIEW_SCORE_WITHOUT_VOUCHER\": 4.195656713301\n},\n{\n  \"CUSTOMER_STATE\": \"rj\",\n  \"AVG_REVIEW_SCORE_WITH_VOUCHER\": 3.881983677966,\n  \"AVG_REVIEW_SCORE_WITHOUT_VOUCHER\": 3.883825100682\n},\n{\n  \"CUSTOMER_STATE\": \"rs\",\n  \"AVG_REVIEW_SCORE_WITH_VOUCHER\": 4.254335260116,\n  \"AVG_REVIEW_SCORE_WITHOUT_VOUCHER\": 4.145118230359\n},\n{\n  \"CUSTOMER_STATE\": \"sp\",\n  \"AVG_REVIEW_SCORE_WITH_VOUCHER\": 4.144617380026,\n  \"AVG_REVIEW_SCORE_WITHOUT_VOUCHER\": 4.20057681781\n}\n]\n",
+        "retrieval_context": null,
+        "context": null,
+        "name": "TAB-05",
+        "comments": null,
+        "source_file": null,
+        "tools_called": null,
+        "expected_tools": null,
+        "additional_metadata": {
+            "category": "Standard Tab",
+            "ground_truth_sql": "WITH top_states AS (\n    SELECT o.customer_state, COUNT(*) AS valid_order_count\n    FROM fct_orders o\n    WHERE o.is_valid_order = 1\n    GROUP BY o.customer_state\n    ORDER BY valid_order_count DESC\n    LIMIT 5\n)\nSELECT \n    o.customer_state,\n    AVG(CASE WHEN o.has_voucher_payment = 1 THEN o.review_score END) AS avg_review_score_with_voucher,\n    AVG(CASE WHEN o.has_voucher_payment = 0 THEN o.review_score END) AS avg_review_score_without_voucher\nFROM fct_orders o\nJOIN top_states ts ON o.customer_state = ts.customer_state\nWHERE o.is_valid_order = 1\nGROUP BY o.customer_state\nORDER BY o.customer_state;\n",
+            "limit_type": "standard_tab_limit",
+            "intent": "tab"
+        },
+        "custom_column_key_values": null
+    }
+]

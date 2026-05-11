@@ -1,0 +1,39 @@
+id: NL-04
+category: Standard NL
+input: Compare the delivery performance and delay metrics between 'SP' and 'RJ' states.
+ground_truth_sql: |
+  SELECT
+  LOWER(o.customer_state) AS state,
+  COUNT(*) AS total_orders,
+  SUM(o.is_delivered_on_time) AS on_time_deliveries,
+  AVG(o.is_delivered_on_time) * 100 AS on_time_percentage,
+  AVG(o.days_delayed) AS avg_days_delayed,
+  AVG(o.actual_delivery_time_days) AS avg_actual_delivery_days,
+  AVG(o.estimated_delivery_time_days) AS avg_estimated_delivery_days
+  FROM fct_orders AS o
+  WHERE LOWER(o.customer_state) IN ('sp', 'rj')
+  AND o.is_valid_order = 1
+  GROUP BY LOWER(o.customer_state)
+  ORDER BY state;
+expected_output: |
+  On-time delivery performance
+  SP: 92.66% of orders were delivered on time.  
+  RJ: 84.16% of orders were delivered on time.  
+  SP outperforms RJ by about 8.5 percentage points.
+
+  Average delay  
+  SP: 0.37 days delayed on average.  
+  RJ: 1.59 days delayed on average.  
+  SP experiences roughly 1.2 days less delay than RJ.
+
+  Delivery time  
+  SP: Average actual delivery time is 8.70 days, with an estimated time of 19.82 days.  
+  RJ: Average actual delivery time is 15.24 days, with an estimated time of 27.00 days.  
+  SP's deliveries are both faster and closer to the estimated schedule than RJ's.
+
+  Summary
+  SP shows stronger delivery performance, with higher on-time rates, shorter delays, and quicker fulfillment compared to RJ.
+metadata:
+  limit_type: standard_nl_limit
+  intent: nl
+  download_button: False

@@ -1,0 +1,92 @@
+id: BND-03
+category: Boundaries
+input: Show a table of the first 50 customers sorted by registration date, including their unique ID, city, state, first purchase date, and lifetime value.
+ground_truth_sql: |
+  SELECT
+  c.customer_unique_id,
+  c.customer_city,
+  c.customer_state,
+  c.first_purchase_at,
+  c.lifetime_value
+  FROM dim_customers AS c
+  ORDER BY c.first_purchase_at ASC
+  LIMIT 50;
+expected_output: |
+  Showing the first 10 records out of 50 total matches found. The full dataset can be downloaded as a CSV below.
+  [
+  {
+    "CUSTOMER_UNIQUE_ID": "b7d76e111c89f7ebf14761390f0f7d17",
+    "CUSTOMER_CITY": "boa vista",
+    "CUSTOMER_STATE": "rr",
+    "FIRST_PURCHASE_AT": "2016-09-04T21:15:19+02:00",
+    "LIFETIME_VALUE": 136.23
+  },
+  {
+    "CUSTOMER_UNIQUE_ID": "4854e9b3feff728c13ee5fc7d1547e92",
+    "CUSTOMER_CITY": "passo fundo",
+    "CUSTOMER_STATE": "rs",
+    "FIRST_PURCHASE_AT": "2016-09-05T00:15:34+02:00",
+    "LIFETIME_VALUE": 0
+  },
+  {
+    "CUSTOMER_UNIQUE_ID": "009b0127b727ab0ba422f6d9604487c7",
+    "CUSTOMER_CITY": "sao jose dos campos",
+    "CUSTOMER_STATE": "sp",
+    "FIRST_PURCHASE_AT": "2016-09-13T15:24:19+02:00",
+    "LIFETIME_VALUE": 0
+  },
+  {
+    "CUSTOMER_UNIQUE_ID": "830d5b7aaa3b6f1e9ad63703bec97d23",
+    "CUSTOMER_CITY": "sao joaquim da barra",
+    "CUSTOMER_STATE": "sp",
+    "FIRST_PURCHASE_AT": "2016-09-15T12:16:38+02:00",
+    "LIFETIME_VALUE": 0
+  },
+  {
+    "CUSTOMER_UNIQUE_ID": "0eb1ee9dba87f5b36b4613a65074337c",
+    "CUSTOMER_CITY": "sao paulo",
+    "CUSTOMER_STATE": "sp",
+    "FIRST_PURCHASE_AT": "2016-10-02T22:07:52+02:00",
+    "LIFETIME_VALUE": 0
+  },
+  {
+    "CUSTOMER_UNIQUE_ID": "32ea3bdedab835c3aa6cb68ce66565ef",
+    "CUSTOMER_CITY": "sao paulo",
+    "CUSTOMER_STATE": "sp",
+    "FIRST_PURCHASE_AT": "2016-10-03T09:44:50+02:00",
+    "LIFETIME_VALUE": 137.16
+  },
+  {
+    "CUSTOMER_UNIQUE_ID": "2f64e403852e6893ae37485d5fcacdaf",
+    "CUSTOMER_CITY": "panambi",
+    "CUSTOMER_STATE": "rs",
+    "FIRST_PURCHASE_AT": "2016-10-03T16:56:50+02:00",
+    "LIFETIME_VALUE": 39.09
+  },
+  {
+    "CUSTOMER_UNIQUE_ID": "b8b8726af116a5cfb35b0315ecef9172",
+    "CUSTOMER_CITY": "rio de janeiro",
+    "CUSTOMER_STATE": "rj",
+    "FIRST_PURCHASE_AT": "2016-10-03T21:01:41+02:00",
+    "LIFETIME_VALUE": 0
+  },
+  {
+    "CUSTOMER_UNIQUE_ID": "61db744d2f835035a5625b59350c6b63",
+    "CUSTOMER_CITY": "porto alegre",
+    "CUSTOMER_STATE": "rs",
+    "FIRST_PURCHASE_AT": "2016-10-03T21:13:36+02:00",
+    "LIFETIME_VALUE": 53.73
+  },
+  {
+    "CUSTOMER_UNIQUE_ID": "8d3a54507421dbd2ce0a1d58046826e0",
+    "CUSTOMER_CITY": "hortolandia",
+    "CUSTOMER_STATE": "sp",
+    "FIRST_PURCHASE_AT": "2016-10-03T22:06:03+02:00",
+    "LIFETIME_VALUE": 133.46
+  }
+  ]
+metadata:
+  limit_type: standard_tab_limit
+  intent: tab
+  download_button: True
+  is_capped: False
