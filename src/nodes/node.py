@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 
 from langchain_core.messages import AIMessage, SystemMessage
+from langchain_core.runnables import RunnableConfig
 
 from src.config.config import Config
 from src.database.db import SupabaseDB
@@ -53,6 +54,7 @@ class TextToSQLNodes:
     def build_schema(
         self,
         state: TextToSQLState,
+        config: RunnableConfig,
     ):
         """
         Gathers dbt metadata and embeddings metadata to create a unified
@@ -69,9 +71,9 @@ class TextToSQLNodes:
                 "tabular_answer": None,
             }
 
-            if state.schema is not None:
+            if state.db_schema is not None:
                 logger.info("Schema is already loaded in state. Skipping extraction.")
-                reset_state["schema"] = state.schema
+                reset_state["db_schema"] = state.db_schema
                 return reset_state
 
             # 2. Check Supabase Cache (Unless force_refresh is True)
@@ -81,7 +83,7 @@ class TextToSQLNodes:
                     logger.info("Schema found in Supabase cache. Loading...")
                     try:
                         final_schema = Schema.model_validate(cache_data)
-                        reset_state["schema"] = final_schema
+                        reset_state["db_schema"] = final_schema
                         return reset_state
                     except Exception as e:
                         logger.warning(
@@ -121,6 +123,7 @@ class TextToSQLNodes:
                     variables={"model_yaml": model_yaml_str},
                     config=self.config,
                     output_schema=Table,
+                    runnable_config=config,
                 )
                 db_tables.append(table_schema)
 
@@ -140,6 +143,7 @@ class TextToSQLNodes:
                 },
                 config=self.config,
                 output_schema=RelationshipDigest,
+                runnable_config=config,
             )
 
             logger.info(
@@ -159,14 +163,14 @@ class TextToSQLNodes:
             logger.info("Saving newly built schema to Supabase cache...")
             self.db.insert_schema_cache("unified_schema", final_schema.model_dump())
 
-            reset_state["schema"] = final_schema
+            reset_state["db_schema"] = final_schema
             return reset_state
 
         except Exception as e:
             logger.exception("Failed to build unified schema.")
             raise SchemaBuildError(e)
 
-    def route_format(self, state: TextToSQLState):
+    def route_format(self, state: TextToSQLState, config: RunnableConfig):
         """
         Uses an LLM to determine if the user wants tabular or natural language format,
         and also detects review and semantic intents.
@@ -179,6 +183,7 @@ class TextToSQLNodes:
                 config=self.config,
                 output_schema=Router,
                 use_fast_llm=True,
+                runnable_config=config,
             )
 
             return {"router": response}
@@ -188,7 +193,7 @@ class TextToSQLNodes:
             # Default fallback
             return {"router": Router(route="nl")}
 
-    def extract_semantic_concept(self, state: TextToSQLState):
+    def extract_semantic_concept(self, state: TextToSQLState, config: RunnableConfig):
         """
         Extracts the search concept from the question and generates its embedding.
         """
@@ -204,6 +209,7 @@ class TextToSQLNodes:
                 },
                 config=self.config,
                 use_fast_llm=True,
+                runnable_config=config,
             )
             search_concept = concept_response.content.strip()
             logger.info(f"Extracted concept: '{search_concept}'")
@@ -227,7 +233,7 @@ class TextToSQLNodes:
             )
             raise NodeException(e)
 
-    def semantic_query_generator(self, state: TextToSQLState):
+    def semantic_query_generator(self, state: TextToSQLState, config: RunnableConfig):
         """
         Generates the specialized vector SQL using the semantic prompt.
         """
@@ -237,7 +243,7 @@ class TextToSQLNodes:
             )
 
             # Serialize the schema so the LLM can read it
-            schema_json = json.dumps(state.schema.model_dump(), indent=2)
+            schema_json = json.dumps(state.db_schema.model_dump(), indent=2)
 
             # Run structured generation for semantic search
             sql_generation_output = run_prompt(
@@ -250,6 +256,7 @@ class TextToSQLNodes:
                 config=self.config,
                 chat_history=state.chat_history,
                 output_schema=SQLGenerator,
+                runnable_config=config,
             )
 
             # Preserve the search concept and vector from the previous state (if any)
@@ -300,14 +307,14 @@ class TextToSQLNodes:
             logger.exception("Failed to create Semantic SQL query.")
             raise SQLGenerationError(e)
 
-    def generate_sql(self, state: TextToSQLState):
+    def generate_sql(self, state: TextToSQLState, config: RunnableConfig):
         try:
             logger.info(
                 f"Generating SQL query for question: '{state.question}' (Iteration: {state.validator.iteration_count + 1})"
             )
 
             # Serialize the schema so the LLM can read it
-            schema_json = json.dumps(state.schema.model_dump(), indent=2)
+            schema_json = json.dumps(state.db_schema.model_dump(), indent=2)
 
             # Run structured generation
             sql_generation_output = run_prompt(
@@ -319,6 +326,7 @@ class TextToSQLNodes:
                 config=self.config,
                 chat_history=state.chat_history,
                 output_schema=SQLGenerator,
+                runnable_config=config,
             )
 
             logger.info("SQL generation successful.")
@@ -350,7 +358,7 @@ class TextToSQLNodes:
             logger.exception("Failed to create SQL query.")
             raise SQLGenerationError(e)
 
-    def validate_sql(self, state: TextToSQLState):
+    def validate_sql(self, state: TextToSQLState, config: RunnableConfig):
         """
         Validates the generated SQL using Snowflake's EXPLAIN command.
         This checks for syntax and object existence without executing the query.
@@ -434,7 +442,7 @@ class TextToSQLNodes:
                 ],
             }
 
-    def execute_sql(self, state: TextToSQLState):
+    def execute_sql(self, state: TextToSQLState, config: RunnableConfig):
         """
         Executes the validated SQL query against Snowflake.
         Fetches the results and stores them in the state.
@@ -514,7 +522,7 @@ class TextToSQLNodes:
                 ],
             }
 
-    def generate_tabular_answer(self, state: TextToSQLState):
+    def generate_tabular_answer(self, state: TextToSQLState, config: RunnableConfig):
         """
         Passes the query results to the tabular_answer state field, truncated to the display limit.
         """
@@ -554,7 +562,7 @@ class TextToSQLNodes:
             "chat_history": [AIMessage(content=answer)],
         }
 
-    def generate_nl_answer(self, state: TextToSQLState):
+    def generate_nl_answer(self, state: TextToSQLState, config: RunnableConfig):
         """
         Uses an LLM to generate a natural language summary of the query results.
         """
@@ -595,6 +603,7 @@ class TextToSQLNodes:
                 config=self.config,
                 chat_history=state.chat_history,
                 use_fast_llm=False,
+                runnable_config=config,
             )
             answer = response.content.strip()
 
@@ -614,7 +623,7 @@ class TextToSQLNodes:
             logger.exception("Failed to generate natural language answer.")
             raise NodeException(f"Failed to generate NL answer: {e}")
 
-    def summarize_review_sentiment(self, state: TextToSQLState):
+    def summarize_review_sentiment(self, state: TextToSQLState, config: RunnableConfig):
         """
         Uses an LLM to generate a specialized natural language summary of review sentiments.
         """
@@ -654,6 +663,7 @@ class TextToSQLNodes:
                 config=self.config,
                 chat_history=state.chat_history,
                 use_fast_llm=False,  # Use smart LLM for better thematic grouping
+                runnable_config=config,
             )
             answer = response.content.strip()
 
@@ -672,3 +682,66 @@ class TextToSQLNodes:
         except Exception as e:
             logger.exception("Failed to generate review sentiment summary.")
             raise NodeException(f"Failed to generate review summary: {e}")
+
+    def persist_history(self, state: TextToSQLState, config: RunnableConfig):
+        """
+        Saves the conversation to the Supabase database.
+        """
+        try:
+            # 1. Extract thread_id and user identity
+            thread_id = config.get("configurable", {}).get("thread_id")
+            # Prefer state values (passed from UI) but fallback to config
+            user_id = state.user_id or config.get("configurable", {}).get("user_id")
+            user_email = state.user_email or config.get("configurable", {}).get(
+                "user_email"
+            )
+
+            if not thread_id or not user_id:
+                logger.warning(
+                    f"Missing thread_id ({thread_id}) or user_id ({user_id}). Skipping persistence."
+                )
+                return {}
+
+            logger.info(f"Persisting history for thread {thread_id} and user {user_id}")
+
+            # 2. Configure the database instance with user context
+            self.db.user_id = user_id
+            self.db.user_email = user_email
+
+            # 3. Ensure Supabase chat history thread entry exists (upsert)
+            # Use the question as title if it's a new thread
+            self.db.upsert_chat_thread(thread_id, title=state.question[:30] + "...")
+
+            # 4. Determine Assistant Message content and type
+            content = None
+            msg_type = "text"
+
+            if state.tabular_answer:
+                content = {
+                    "data": state.tabular_answer.data,
+                    "answer": state.tabular_answer.answer,
+                }
+                msg_type = "dataframe"
+            elif state.answer:
+                content = state.answer
+                msg_type = "text"
+            elif state.generated_sql and state.generated_sql.unsupported_explanation:
+                content = state.generated_sql.unsupported_explanation
+                msg_type = "warning"
+
+            # 5. Save messages to Supabase
+            if content:
+                # Save User message first
+                self.db.save_message(thread_id, "user", state.question, "text")
+                # Save Assistant message
+                self.db.save_message(thread_id, "assistant", content, msg_type)
+                logger.info(
+                    "Successfully saved user and assistant messages to Supabase."
+                )
+            else:
+                logger.warning("No assistant content found to save.")
+
+            return {}
+        except Exception as e:
+            logger.error(f"Failed to persist history to Supabase: {e}")
+            return {}

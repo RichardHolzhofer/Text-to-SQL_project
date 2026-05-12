@@ -221,4 +221,6 @@ deepeval_test_results/
 snowflake.txt
 
 # Generated CSVs
-generated_csvs/
+generated_csvs/ 
+# LangGraph
+.langgraph_api/
