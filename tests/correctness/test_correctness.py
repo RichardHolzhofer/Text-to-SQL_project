@@ -7,16 +7,17 @@ from deepeval import assert_test
 from deepeval.dataset import EvaluationDataset
 from deepeval.metrics import GEval
 from deepeval.test_case import LLMTestCase, SingleTurnParams
+from langfuse import propagate_attributes
+from langfuse.langchain import CallbackHandler
 
 from src.config.config import Config
 from src.database.db import SupabaseDB
 from src.graph_builder.graph_builder import TextToSQLGraph
 from src.states.state import Schema
-from langfuse.langchain import CallbackHandler
-from langfuse import propagate_attributes
 
 # 1. SETUP: Initialize Graph, Langfuse and Cache Schema once per session
 langfuse_handler = CallbackHandler()
+
 
 @pytest.fixture(scope="session")
 def graph():
@@ -37,7 +38,7 @@ def cached_schema():
 
 # 2. METRIC: Define Factual Correctness via G-Eval
 correctness_metric = GEval(
-    model='gpt-4.1',
+    model="gpt-4.1",
     name="Factual Correctness",
     evaluation_steps=[
         "Check whether the facts in the actual output contradict any facts in the expected output.",
@@ -45,7 +46,7 @@ correctness_metric = GEval(
         "Do not penalize for variations in column names or keys (e.g., 'AVG_SCORE' vs 'AVERAGE_SCORE') if the meaning and data are equivalent.",
         "Ignore minor formatting differences such as casing or extra spaces if the factual content matches.",
         "Do NOT penalize for omission of detail — the actual output only needs to correctly answer the question, not match the level of detail in the expected output.",
-        "Vague language or missing elaboration is acceptable as long as no incorrect facts are stated."
+        "Vague language or missing elaboration is acceptable as long as no incorrect facts are stated.",
     ],
     evaluation_params=[
         SingleTurnParams.ACTUAL_OUTPUT,
@@ -84,15 +85,15 @@ def test_text_to_sql_correctness(golden, graph, cached_schema):
         "callbacks": [langfuse_handler],
         "metadata": {
             "test_case_id": metadata.get("id"),
-            "run_type": "correctness_test"
+            "run_type": "correctness_test",
         },
-        "tags": ["test", metadata.get("category", "general")]
+        "tags": ["test", metadata.get("category", "general")],
     }
 
     # Pass the pre-cached schema to bypass extraction logic
     initial_state = {
         "question": golden.input,
-        "schema": cached_schema,
+        "db_schema": cached_schema,
         "force_refresh": False,
     }
 
@@ -101,10 +102,10 @@ def test_text_to_sql_correctness(golden, graph, cached_schema):
         session_id=f"eval_session_{uuid.uuid4().hex[:8]}",
         user_id="eval_service",
         metadata={
-            "name":golden.name,
-            "intent":metadata.get("intent"),
-            "limit_type":metadata.get("limit_type")
-        }
+            "name": golden.name,
+            "intent": metadata.get("intent"),
+            "limit_type": metadata.get("limit_type"),
+        },
     ):
         print(f"\nRunning test for: {golden.input}")
         result = graph.invoke(initial_state, config=config_run)
@@ -119,12 +120,13 @@ def test_text_to_sql_correctness(golden, graph, cached_schema):
                 actual_output = tab_res.answer
                 if tab_res.data:
                     import json
+
                     # Dump data to string to match the expected_output format
                     data_json = json.dumps(tab_res.data, default=str)
                     actual_output = f"{actual_output} {data_json}"
             else:
                 actual_output = "No tabular answer generated."
-            
+
             # Check is_capped logic
             expected_capped = metadata.get("is_capped", False)
             actual_capped = tab_res.is_capped if tab_res else False
@@ -133,7 +135,6 @@ def test_text_to_sql_correctness(golden, graph, cached_schema):
             )
         else:
             actual_output = result.get("answer") or "No answer generated."
-
 
     # Create the test case for DeepEval with Normalization
     test_case = LLMTestCase(

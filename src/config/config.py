@@ -57,16 +57,30 @@ class Config:
         # Langfuse settings for prompt management and tracing
         self.lf_public_key = os.getenv("LANGFUSE_PUBLIC_KEY")
         self.lf_secret_key = os.getenv("LANGFUSE_SECRET_KEY")
-        self.lf_host = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
+        self.lf_host = os.getenv("LANGFUSE_HOST") or os.getenv(
+            "LANGFUSE_BASE_URL", "https://cloud.langfuse.com"
+        )
 
         # LLM Model settings
         self.smart_model = os.getenv("SMART_LLM_MODEL")
         self.fast_model = os.getenv("FAST_LLM_MODEL")
         self.embedding_model = os.getenv("EMBEDDING_MODEL")
-        self.temperature = float(os.getenv("LLM_TEMPERATURE", 0.0))
+        self.langgraph_url = os.getenv("LANGGRAPH_URL", "http://localhost:2024")
+        self.temperature = self._parse_float_env("LLM_TEMPERATURE", default=0.0)
 
         # Validation (Optional)
         self._validate_config()
+
+    def _parse_float_env(self, var_name: str, default: float) -> float:
+        value = os.getenv(var_name)
+        if value is None or value == "":
+            return default
+        try:
+            return float(value)
+        except ValueError as error:
+            raise ConfigError(
+                f"{var_name} must be a valid number, got: {value}"
+            ) from error
 
     def _validate_config(self):
         """Ensure critical environment variables are present."""
@@ -82,12 +96,10 @@ class Config:
             "DBT_SNOWFLAKE_PASSWORD",
             "AGENT_SNOWFLAKE_USER",
             "AGENT_SNOWFLAKE_PASSWORD",
-            "SUPABASE_PROJECT_NAME",
             "SUPABASE_DB_URI",
             "SUPABASE_URL",
             "SUPABASE_ANON_KEY",
             "SUPABASE_SERVICE_ROLE_KEY",
-            "SUPABASE_PASSWORD",
             "SMART_LLM_MODEL",
             "FAST_LLM_MODEL",
             "EMBEDDING_MODEL",
@@ -95,6 +107,23 @@ class Config:
             "LANGFUSE_SECRET_KEY",
         ]
         missing = [var for var in required if not os.getenv(var)]
+
+        provider_key_requirements = {
+            "openai": "OPENAI_API_KEY",
+            "groq": "GROQ_API_KEY",
+        }
+        for model in [self.smart_model, self.fast_model]:
+            if not model or ":" not in model:
+                continue
+            provider = model.split(":", 1)[0].lower()
+            api_key = provider_key_requirements.get(provider)
+            if api_key and not os.getenv(api_key):
+                missing.append(api_key)
+
+        if self.embedding_model and not os.getenv("OPENAI_API_KEY"):
+            missing.append("OPENAI_API_KEY")
+
+        missing = sorted(set(missing))
         if missing:
             raise ConfigError(
                 f"Missing required environment variables: {', '.join(missing)}"

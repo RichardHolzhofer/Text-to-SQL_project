@@ -9,6 +9,7 @@ def run_prompt(
     chat_history=None,
     output_schema=None,
     use_fast_llm=False,
+    runnable_config=None,
 ):
     """
     Unified helper to load a prompt template, bind the correct LLM (with overrides),
@@ -40,12 +41,19 @@ def run_prompt(
 
     # 6. Execute Chain
     chain = template | llm
-    return chain.invoke(
-        variables,
-        config={
-            "metadata": {"langfuse_prompt": template.metadata.get("langfuse_prompt")}
-        },
-    )
+
+    # Forward LangGraph's runnable config so the graph-level Langfuse callback
+    # traces nested prompt/LLM calls. Only add prompt metadata here.
+    invoke_config = dict(runnable_config) if isinstance(runnable_config, dict) else {}
+    metadata = dict(invoke_config.get("metadata") or {})
+
+    langfuse_prompt = template.metadata.get("langfuse_prompt")
+    if langfuse_prompt:
+        metadata["langfuse_prompt"] = langfuse_prompt
+
+    invoke_config["metadata"] = metadata
+
+    return chain.invoke(variables, config=invoke_config)
 
 
 def generate_conversation_title(config, question: str) -> str:

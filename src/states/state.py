@@ -189,12 +189,14 @@ class TabularResponse(BaseModel):
 
 class TextToSQLState(BaseModel):
     question: str
+    user_id: Optional[str] = None
+    user_email: Optional[str] = None
     chat_history: Annotated[List[BaseMessage], add_messages] = Field(
         default_factory=list
     )
 
     # Schema extraction
-    schema: Optional[Schema] = None
+    db_schema: Optional[Schema] = None
 
     # Router / Intent State
     router: Optional[Router] = None

@@ -4,15 +4,12 @@ from datetime import datetime
 import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
-from langchain_core.messages import HumanMessage
-from langfuse import propagate_attributes
-from langfuse.langchain import CallbackHandler
+from langgraph_sdk import get_sync_client
 
 from src.config.config import Config
 from src.database.db import SupabaseDB
-from src.graph_builder.graph_builder import TextToSQLGraph
+from src.nodes.node import TextToSQLNodes
 from src.states.state import TextToSQLState
-from src.utils.llm_utils import generate_conversation_title
 
 
 @st.cache_data
@@ -57,18 +54,22 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 
-# Initialize Graph
+# Initialize LangGraph Client
 @st.cache_resource
-def get_graph():
-    builder = TextToSQLGraph()
-    return builder.build_graph(), builder.nodes
+def get_client():
+    return get_sync_client(url=config.langgraph_url)
 
 
-try:
-    graph, nodes = get_graph()
-except Exception as e:
-    st.error(f"Failed to initialize the graph: {str(e)}")
-    st.stop()
+client = get_client()
+
+
+# Initialize Nodes
+@st.cache_resource
+def get_nodes():
+    return TextToSQLNodes()
+
+
+nodes = get_nodes()
 
 
 # --- Sidebar: Authentication ---
@@ -297,15 +298,11 @@ if prompt:
     # Reset the new session flag as it's now being used
     st.session_state.new_session_requested = False
 
-    # Ensure thread exists in DB before saving messages
-    if len(st.session_state.messages) == 0:
-        db.create_thread(st.session_state.thread_id, title=prompt[:30] + "...")
-
     # Add user message to state and display
     st.session_state.messages.append(
         {"role": "user", "type": "text", "content": prompt}
     )
-    db.save_message(st.session_state.thread_id, "user", prompt, "text")
+    # Note: db.save_message is now handled by the backend persistence node
 
     with st.chat_message("user"):
         st.markdown(prompt)
@@ -313,12 +310,7 @@ if prompt:
     # Invoke graph
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
-            graph_config = {"configurable": {"thread_id": st.session_state.thread_id}}
-
             try:
-                langfuse_handler = CallbackHandler()
-                graph_config["callbacks"] = [langfuse_handler]
-
                 # Fetch the LATEST schema timestamp for tracing observability
                 schema_info = (
                     db.supabase_conn.table("schema_cache")
@@ -338,52 +330,61 @@ if prompt:
                     "schema_updated_at": schema_ts,
                     "fast_llm": config.fast_model,
                     "smart_llm": config.smart_model,
-                    "max_retry": str(nodes.max_retry),
-                    "semantic_search_threshold": str(nodes.semantic_search_threshold),
+                    "langfuse_session_id": st.session_state.thread_id,
+                    "langfuse_user_id": st.session_state.user_email,
                 }
 
-                # Graph state updates inside the propagate_attributes context
-                with propagate_attributes(
-                    trace_name="text-to-sql-app",
-                    session_id=st.session_state.thread_id,
-                    user_id=st.session_state.user_email,
+                # Langfuse tracing is handled in the LangGraph backend process.
+                # Pass attributes through runnable config metadata so backend node
+                # callbacks and nested LLM calls can inherit the same session.
+                graph_config = {
+                    "configurable": {"thread_id": st.session_state.thread_id},
+                    "metadata": metadata_dict,
+                    "run_name": "text-to-sql-app",
+                }
+
+                # Ensure thread exists in LangGraph
+                client.threads.create(
+                    thread_id=st.session_state.thread_id,
+                    if_exists="do_nothing",
+                )
+
+                # Invoke graph via LangGraph API
+                result = client.runs.wait(
+                    st.session_state.thread_id,
+                    "text_to_sql",
+                    input={
+                        "question": prompt,
+                        "user_id": st.session_state.user_id,
+                        "user_email": st.session_state.user_email,
+                        "chat_history": [{"role": "user", "content": prompt}],
+                    },
+                    config=graph_config,
                     metadata=metadata_dict,
-                ):
-                    result = graph.invoke(
-                        {
-                            "question": prompt,
-                            "chat_history": [HumanMessage(content=prompt)],
-                        },
-                        config=graph_config,
-                    )
+                )
 
                 # Determine response type and display
                 # Check for error/unsupported explanation
-                if (
-                    result.get("generated_sql")
-                    and result["generated_sql"].unsupported_explanation
+                if result.get("generated_sql") and result["generated_sql"].get(
+                    "unsupported_explanation"
                 ):
-                    explanation = result["generated_sql"].unsupported_explanation
+                    explanation = result["generated_sql"]["unsupported_explanation"]
                     st.warning(explanation)
                     st.session_state.messages.append(
                         {"role": "assistant", "type": "warning", "content": explanation}
-                    )
-                    db.save_message(
-                        st.session_state.thread_id, "assistant", explanation, "warning"
                     )
 
                 # Check tabular intent
                 elif (
                     result.get("router")
-                    and result.get("router").route == "tab"
+                    and result["router"].get("route") == "tab"
                     and result.get("tabular_answer") is not None
                 ):
                     # Display fuzzy match warning if present
-                    if (
-                        result.get("generated_sql")
-                        and result["generated_sql"].fuzzy_match_warning
+                    if result.get("generated_sql") and result["generated_sql"].get(
+                        "fuzzy_match_warning"
                     ):
-                        warning_msg = result["generated_sql"].fuzzy_match_warning
+                        warning_msg = result["generated_sql"]["fuzzy_match_warning"]
                         st.warning(warning_msg)
                         st.session_state.messages.append(
                             {
@@ -392,18 +393,12 @@ if prompt:
                                 "content": warning_msg,
                             }
                         )
-                        db.save_message(
-                            st.session_state.thread_id,
-                            "assistant",
-                            warning_msg,
-                            "warning",
-                        )
 
                     tab_resp = result["tabular_answer"]
-                    if tab_resp.answer:
-                        st.markdown(tab_resp.answer)
+                    if tab_resp.get("answer"):
+                        st.markdown(tab_resp["answer"])
 
-                    data = tab_resp.data
+                    data = tab_resp.get("data")
                     full_results = result.get("query_results")
                     df = pd.DataFrame(data)
                     st.dataframe(df)
@@ -425,7 +420,7 @@ if prompt:
                     # Store combined data in content for history
                     combined_content = {
                         "data": data,
-                        "answer": tab_resp.answer,
+                        "answer": tab_resp.get("answer"),
                     }
                     st.session_state.messages.append(
                         {
@@ -435,21 +430,14 @@ if prompt:
                             "full_data": full_results,
                         }
                     )
-                    db.save_message(
-                        st.session_state.thread_id,
-                        "assistant",
-                        combined_content,
-                        "dataframe",
-                    )
 
                 # Fallback to Natural Language
                 elif result.get("answer"):
                     # Display fuzzy match warning if present
-                    if (
-                        result.get("generated_sql")
-                        and result["generated_sql"].fuzzy_match_warning
+                    if result.get("generated_sql") and result["generated_sql"].get(
+                        "fuzzy_match_warning"
                     ):
-                        warning_msg = result["generated_sql"].fuzzy_match_warning
+                        warning_msg = result["generated_sql"]["fuzzy_match_warning"]
                         st.warning(warning_msg)
                         st.session_state.messages.append(
                             {
@@ -457,12 +445,6 @@ if prompt:
                                 "type": "warning",
                                 "content": warning_msg,
                             }
-                        )
-                        db.save_message(
-                            st.session_state.thread_id,
-                            "assistant",
-                            warning_msg,
-                            "warning",
                         )
 
                     answer = result["answer"]
@@ -491,20 +473,12 @@ if prompt:
                             "full_data": full_results,
                         }
                     )
-                    db.save_message(
-                        st.session_state.thread_id, "assistant", answer, "text"
-                    )
                 else:
                     st.error(
                         "An unexpected error occurred. No answer or table was generated."
                     )
 
-                # --- Auto-generate title after the first exchange ---
-                if len(st.session_state.messages) == 2:
-                    with st.spinner("Generating conversation title..."):
-                        new_title = generate_conversation_title(config, prompt)
-                        db.create_thread(st.session_state.thread_id, title=new_title)
-                    st.rerun()
+                # --- No need to generate title here as backend creates thread with title ---
 
             except Exception as e:
                 error_msg = f"Error invoking graph: {str(e)}"

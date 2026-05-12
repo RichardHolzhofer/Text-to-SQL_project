@@ -6,5 +6,9 @@
   "python_version": "3.13",
   "dependencies": [
     "."
-  ]
+  ],
+  "checkpointer": {
+    "type": "postgres",
+    "uri": "${SUPABASE_DB_URI}"
+  }
 }

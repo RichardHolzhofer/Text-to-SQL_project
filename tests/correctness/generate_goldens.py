@@ -1,5 +1,6 @@
-import yaml
 from pathlib import Path
+
+import yaml
 from deepeval.dataset import EvaluationDataset, Golden
 
 # Path configuration

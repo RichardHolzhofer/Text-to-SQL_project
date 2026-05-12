@@ -81,8 +81,8 @@ class SupabaseDB:
             self.config.logger.error(error)
             return []
 
-    def create_thread(self, thread_id: str, title: str = "New Conversation"):
-        """Creates a new thread entry in the database."""
+    def upsert_chat_thread(self, thread_id: str, title: str = "New Conversation"):
+        """Creates or updates a UI chat thread entry in Supabase."""
         if not self.user_id:
             return
         try:

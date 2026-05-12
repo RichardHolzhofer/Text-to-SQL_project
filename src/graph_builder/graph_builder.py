@@ -1,8 +1,7 @@
 import os
 
-from langgraph.checkpoint.postgres import PostgresSaver
+from langfuse.langchain import CallbackHandler
 from langgraph.graph import END, StateGraph
-from psycopg_pool import ConnectionPool
 
 from src.config.config import Config
 from src.nodes.node import TextToSQLNodes
@@ -65,20 +64,25 @@ class TextToSQLGraph:
         workflow.add_node("query_generator_node", self.nodes.generate_sql)
 
         workflow.add_node(
-            "extract_semantic_concept_node", self.nodes.extract_semantic_concept
+            "extract_semantic_concept_node",
+            self.nodes.extract_semantic_concept,
         )
         workflow.add_node(
-            "semantic_query_generator_node", self.nodes.semantic_query_generator
+            "semantic_query_generator_node",
+            self.nodes.semantic_query_generator,
         )
         workflow.add_node("validator_node", self.nodes.validate_sql)
         workflow.add_node("query_executer_node", self.nodes.execute_sql)
         workflow.add_node(
-            "generate_tabular_answer_node", self.nodes.generate_tabular_answer
+            "generate_tabular_answer_node",
+            self.nodes.generate_tabular_answer,
         )
         workflow.add_node("generate_nl_answer_node", self.nodes.generate_nl_answer)
         workflow.add_node(
-            "summarize_review_sentiment_node", self.nodes.summarize_review_sentiment
+            "summarize_review_sentiment_node",
+            self.nodes.summarize_review_sentiment,
         )
+        workflow.add_node("persistence_node", self.nodes.persist_history)
 
         # Edges
         workflow.set_entry_point("schema_builder_node")
@@ -121,12 +125,15 @@ class TextToSQLGraph:
             },
         )
 
-        workflow.add_edge("generate_tabular_answer_node", END)
-        workflow.add_edge("generate_nl_answer_node", END)
-        workflow.add_edge("summarize_review_sentiment_node", END)
+        workflow.add_edge("generate_tabular_answer_node", "persistence_node")
+        workflow.add_edge("generate_nl_answer_node", "persistence_node")
+        workflow.add_edge("summarize_review_sentiment_node", "persistence_node")
+        workflow.add_edge("persistence_node", END)
 
         # Compile and add checkpointer for memory
-        self.graph = workflow.compile(checkpointer=checkpointer)
+        self.graph = workflow.compile(checkpointer=checkpointer).with_config(
+            callbacks=[CallbackHandler()],
+        )
 
         return self.graph
 
