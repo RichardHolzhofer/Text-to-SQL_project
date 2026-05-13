@@ -1,0 +1,94 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[codz]
+*$py.class
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py.cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# Environments
+.env
+.env.local
+.envrc
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
+.vscode/
+.idea/
+.cursorignore
+.cursorindexingignore
+
+# Ruff stuff
+.ruff_cache/
+
+# Git
+.git
+.gitignore
+
+# Docker — keep this file at repo root (build context is "."); it is not read from docker/
+docker/
+
+# Project specific ignores from .gitignore
+.pre-commit-cache/
+.deepeval/
+deepeval_test_results/
+snowflake.txt
+generated_csvs/
+.langgraph_api/
+logs/
+graph_image/
+data/
+snowflake_scripts/
+ingestion/
+
+# Explicitly ignore contents but keep specific files
+olist/**/*
+!olist/
+!olist/models/
+!olist/models/marts/
+!olist/models/marts/_marts_schema.yml
+
+embeddings/**/*
+!embeddings/
+!embeddings/_embeddings_schema.yml

@@ -84,5 +84,13 @@ class SupabaseQueryError(PipelineException):
     """Raised when a Supabase database query fails."""
 
 
+class NetworkRetryExhaustedError(PipelineException):
+    """Raised when a Supabase/HTTP client call still fails after transient retries."""
+
+
+class SnowflakeResultProcessingError(PipelineException):
+    """Raised when converting Snowflake cursor rows to dicts fails."""
+
+
 class PromptSyncError(PipelineException):
     """Raised when the prompt synchronization process fails."""
