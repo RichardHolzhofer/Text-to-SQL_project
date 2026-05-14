@@ -1,3 +1,7 @@
+from src.exceptions.exception import (
+    LLMInvocationError,
+    LLMTemplateError,
+)
 from src.logger.logger import logger
 from src.utils.utils import get_prompt_template
 
@@ -15,45 +19,65 @@ def run_prompt(
     Unified helper to load a prompt template, bind the correct LLM (with overrides),
     handle conversational history, and execute the chain with tracing.
     """
-    # 1. Load native template
-    template = get_prompt_template(prompt_name, config)
-    prompt_config = template.metadata.get("config", {})
+    try:
+        # 1. Load native template
+        try:
+            template = get_prompt_template(prompt_name, config)
+        except Exception as e:
+            logger.error(f"Failed to load prompt template '{prompt_name}': {e}")
+            raise LLMTemplateError(e) from e
 
-    # 2. Select LLM (Smart vs Fast vs Override)
-    model_override = prompt_config.get("model")
-    if model_override:
-        llm = config.get_llm(model_override)
-    else:
-        llm = config.get_fast_llm() if use_fast_llm else config.get_smart_llm()
+        prompt_config = template.metadata.get("config", {})
 
-    # 3. Bind Parameters (Temperature, etc.)
-    if "temperature" in prompt_config:
-        llm = llm.bind(temperature=float(prompt_config["temperature"]))
+        # 2. Select LLM (Smart vs Fast vs Override)
+        model_override = prompt_config.get("model")
+        if model_override:
+            llm = config.get_llm(model_override)
+        else:
+            llm = config.get_fast_llm() if use_fast_llm else config.get_smart_llm()
 
-    # 4. Handle Structured Output
-    if output_schema:
-        llm = llm.with_structured_output(output_schema)
+        # 3. Bind Parameters (Temperature, etc.)
+        if "temperature" in prompt_config:
+            llm = llm.bind(temperature=float(prompt_config["temperature"]))
 
-    # 5. Handle History
-    if chat_history:
-        # We extend the template's internal message list
-        template.messages.extend(chat_history)
+        # 4. Handle Structured Output
+        if output_schema:
+            llm = llm.with_structured_output(output_schema)
 
-    # 6. Execute Chain
-    chain = template | llm
+        # 5. Handle History
+        if chat_history:
+            # We extend the template's internal message list
+            template.messages.extend(chat_history)
 
-    # Forward LangGraph's runnable config so the graph-level Langfuse callback
-    # traces nested prompt/LLM calls. Only add prompt metadata here.
-    invoke_config = dict(runnable_config) if isinstance(runnable_config, dict) else {}
-    metadata = dict(invoke_config.get("metadata") or {})
+        # 6. Execute Chain
+        chain = template | llm
 
-    langfuse_prompt = template.metadata.get("langfuse_prompt")
-    if langfuse_prompt:
-        metadata["langfuse_prompt"] = langfuse_prompt
+        # Forward LangGraph's runnable config so the graph-level Langfuse callback
+        # traces nested prompt/LLM calls. Only add prompt metadata here.
+        invoke_config = (
+            dict(runnable_config) if isinstance(runnable_config, dict) else {}
+        )
+        metadata = dict(invoke_config.get("metadata") or {})
 
-    invoke_config["metadata"] = metadata
+        langfuse_prompt = template.metadata.get("langfuse_prompt")
+        if langfuse_prompt:
+            metadata["langfuse_prompt"] = langfuse_prompt
 
-    return chain.invoke(variables, config=invoke_config)
+        invoke_config["metadata"] = metadata
+
+        try:
+            return chain.invoke(variables, config=invoke_config)
+        except Exception as e:
+            logger.error(f"LLM invocation failed for prompt '{prompt_name}': {e}")
+            raise LLMInvocationError(e) from e
+
+    except (LLMTemplateError, LLMInvocationError):
+        # Re-raise custom exceptions as-is
+        raise
+    except Exception as e:
+        # Catch any other unexpected errors
+        logger.exception(f"Unexpected error in run_prompt for '{prompt_name}': {e}")
+        raise LLMInvocationError(e) from e
 
 
 def generate_conversation_title(config, question: str) -> str:

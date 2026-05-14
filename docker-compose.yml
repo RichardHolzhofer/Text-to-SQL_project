@@ -17,6 +17,9 @@ services:
       context: .
       dockerfile: docker/Dockerfile_api
     image: text-to-sql-app-api
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     ports:
       - "8123:8000"
     env_file:
@@ -48,6 +51,9 @@ services:
       dockerfile: docker/Dockerfile-streamlit
     image: text-to-sql-app-frontend
     container_name: text-to-sql-streamlit
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     ports:
       - "8501:8501"
     env_file:

@@ -1,27 +1,21 @@
-# Use a Python 3.13 slim image for a smaller footprint
 FROM python:3.13-slim
 
-# Install uv for high-performance dependency management
+# Install uv for package management
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# Set the working directory in the container
+# Set the working directory
 WORKDIR /app
 
-# Enable bytecode compilation for slightly faster startup
 ENV UV_COMPILE_BYTECODE=1
 ENV PYTHONPATH=/app
 
-# Copy only dependency files first to leverage Docker layer caching
+# Copy only dependency files
 COPY pyproject.toml uv.lock ./
 
 # Install dependencies using uv sync
-# --frozen ensures we use the exact versions from uv.lock
-# --no-dev excludes development dependencies
-# --no-install-project skips installing the project itself in this step
 RUN uv sync --frozen --no-install-project --no-dev
 
 # Copy the entire project into the container
-# This is done after dependency installation to avoid re-installing on every code change
 COPY . .
 
 # Expose the default Streamlit port
@@ -31,6 +25,4 @@ EXPOSE 8501
 HEALTHCHECK CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8501/_stcore/health')"
 
 # Run the Streamlit application
-# We use 'uv run' to ensure the command is executed within the created virtual environment
-# The --server.address=0.0.0.0 is crucial for accessibility within a container
 ENTRYPOINT ["uv", "run", "streamlit", "run", "src/ui/app.py", "--server.port=8501", "--server.address=0.0.0.0"]

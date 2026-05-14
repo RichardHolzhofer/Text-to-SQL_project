@@ -276,9 +276,7 @@ class SupabaseDB:
                     payload = json.loads(json.dumps(raw, default=str))
                 else:
                     self.config.logger.warning(
-                        "Schema cache for key '%s' has unexpected content type %s; ignoring",
-                        key,
-                        type(raw).__name__,
+                        f"Schema cache for key '{key}' has unexpected content type {type(raw).__name__}; ignoring"
                     )
                     return None
 
@@ -289,32 +287,24 @@ class SupabaseDB:
                         payload["updated_at"] = str(row_updated)
             except json.JSONDecodeError as e:
                 self.config.logger.warning(
-                    "Schema cache for key '%s' has invalid JSON: %s",
-                    key,
-                    SupabaseQueryError(e),
+                    f"Schema cache for key '{key}' has invalid JSON: {SupabaseQueryError(e)}"
                 )
                 return None
 
             return payload
         except NetworkRetryExhaustedError as e:
             self.config.logger.warning(
-                "Supabase schema_cache read failed for key '%s' (network retries exhausted): %s",
-                key,
-                SupabaseQueryError(e),
+                f"Supabase schema_cache read failed for key '{key}' (network retries exhausted): {SupabaseQueryError(e)}"
             )
             return None
         except (KeyError, IndexError, TypeError) as e:
             self.config.logger.warning(
-                "Supabase schema_cache read failed for key '%s' (unexpected response shape): %s",
-                key,
-                SupabaseQueryError(e),
+                f"Supabase schema_cache read failed for key '{key}' (unexpected response shape): {SupabaseQueryError(e)}"
             )
             return None
         except Exception as e:
             self.config.logger.warning(
-                "Supabase schema_cache read failed for key '%s': %s",
-                key,
-                SupabaseQueryError(e),
+                f"Supabase schema_cache read failed for key '{key}': {SupabaseQueryError(e)}"
             )
             return None
 

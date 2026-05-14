@@ -94,3 +94,19 @@ class SnowflakeResultProcessingError(PipelineException):
 
 class PromptSyncError(PipelineException):
     """Raised when the prompt synchronization process fails."""
+
+
+class LLMException(PipelineException):
+    """Base exception class for LLM-related errors."""
+
+
+class LLMInvocationError(LLMException):
+    """Raised when the LLM invocation (chain.invoke) fails."""
+
+
+class LLMTemplateError(LLMException):
+    """Raised when loading or parsing a prompt template fails."""
+
+
+class YAMLProcessingError(PipelineException):
+    """Raised when loading, dumping, or saving YAML files fails."""

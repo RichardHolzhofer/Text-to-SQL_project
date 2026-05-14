@@ -10,7 +10,6 @@ from src.exceptions.exception import (
 
 def retry_transient_network(
     operation: Callable[[], Any],
-    *,
     attempts: int = 4,
     base_delay_sec: float = 0.35,
 ) -> Any:

@@ -4,6 +4,9 @@ from typing import Any, Dict
 import yaml
 from langchain_core.prompts import ChatPromptTemplate
 
+from src.exceptions.exception import LLMTemplateError, YAMLProcessingError
+from src.logger.logger import logger
+
 
 def _str_presenter(dumper, data):
     """Forces block scalars (|) for multi-line strings in YAML."""
@@ -20,23 +23,41 @@ def load_yaml(path: str | Path) -> Dict[str, Any]:
     """
     Load and parse a YAML file from a string path or Path object.
     """
-    with open(path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+    except FileNotFoundError:
+        logger.error(f"YAML file not found at path: {path}")
+        raise YAMLProcessingError(RuntimeError(f"File not found: {path}"))
+    except yaml.YAMLError as e:
+        logger.error(f"Error parsing YAML file at {path}: {e}")
+        raise YAMLProcessingError(e) from e
+    except Exception as e:
+        logger.exception(f"Unexpected error loading YAML from {path}: {e}")
+        raise YAMLProcessingError(e) from e
 
 
 def dump_yaml(data: dict) -> str:
     """
     Convert a dictionary/object to a YAML string.
     """
-    return yaml.dump(data, sort_keys=False, allow_unicode=True)
+    try:
+        return yaml.dump(data, sort_keys=False, allow_unicode=True)
+    except Exception as e:
+        logger.error(f"Error dumping YAML data: {e}")
+        raise YAMLProcessingError(e) from e
 
 
 def save_yaml(data: dict, path: str | Path):
     """
     Save a dictionary/object to a YAML file.
     """
-    with open(path, "w", encoding="utf-8") as f:
-        yaml.dump(data, f, sort_keys=False, allow_unicode=True)
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            yaml.dump(data, f, sort_keys=False, allow_unicode=True)
+    except Exception as e:
+        logger.error(f"Error saving YAML to {path}: {e}")
+        raise YAMLProcessingError(e) from e
 
 
 def get_prompt_template(prompt_name: str, config=None):
@@ -67,22 +88,31 @@ def get_prompt_template(prompt_name: str, config=None):
                 )
 
     # 2. Local Fallback
-    if not prompt_name.endswith(".yaml") and "/" not in prompt_name:
-        path = f"src/prompts/{prompt_name}.yaml"
-    else:
-        path = prompt_name
+    try:
+        if not prompt_name.endswith(".yaml") and "/" not in prompt_name:
+            path = f"src/prompts/{prompt_name}.yaml"
+        else:
+            path = prompt_name
 
-    data = load_yaml(path)
+        data = load_yaml(path)
 
-    # We use template_format="jinja2" to support our local {{ variable }} syntax
-    template = ChatPromptTemplate.from_messages(
-        data.get("messages", []), template_format="jinja2"
-    )
+        # We use template_format="jinja2" to support our local {{ variable }} syntax
+        template = ChatPromptTemplate.from_messages(
+            data.get("messages", []), template_format="jinja2"
+        )
 
-    # Attach config for local parity
-    template.metadata = {"config": data}
+        # Attach config for local parity
+        template.metadata = {"config": data}
 
-    return template
+        return template
+    except YAMLProcessingError as e:
+        # Re-raise as LLMTemplateError for semantic consistency in LLM operations
+        raise LLMTemplateError(e) from e
+    except Exception as e:
+        logger.exception(
+            f"Unexpected error creating prompt template '{prompt_name}': {e}"
+        )
+        raise LLMTemplateError(e) from e
 
 
 def clean_sql_query(sql: str | None) -> str | None:
@@ -90,16 +120,20 @@ def clean_sql_query(sql: str | None) -> str | None:
     Cleans up common LLM formatting artifacts from generated SQL strings,
     including literal newlines, tabs, and markdown code blocks.
     """
-    if not sql:
+    try:
+        if not sql:
+            return sql
+
+        # Replace literal escape sequences if they survived JSON parsing
+        sql = sql.replace("\\n", "\n").replace("\\t", " ")
+
+        # Strip markdown code blocks
+        if "```sql" in sql:
+            sql = sql.split("```sql")[1].split("```")[0]
+        elif "```" in sql:
+            sql = sql.split("```")[1].split("```")[0]
+
+        return sql.strip()
+    except Exception as e:
+        logger.warning(f"Error cleaning SQL query: {e}")
         return sql
-
-    # Replace literal escape sequences if they survived JSON parsing
-    sql = sql.replace("\\n", "\n").replace("\\t", " ")
-
-    # Strip markdown code blocks
-    if "```sql" in sql:
-        sql = sql.split("```sql")[1].split("```")[0]
-    elif "```" in sql:
-        sql = sql.split("```")[1].split("```")[0]
-
-    return sql.strip()
