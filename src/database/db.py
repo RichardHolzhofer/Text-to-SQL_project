@@ -1,3 +1,5 @@
+import json
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 import psycopg2
@@ -5,10 +7,13 @@ from supabase import Client
 
 from src.config.config import Config
 from src.exceptions.exception import (
+    ConfigError,
+    NetworkRetryExhaustedError,
     SupabaseAuthError,
     SupabaseConnectionError,
     SupabaseQueryError,
 )
+from src.utils.db_utils import retry_transient_network
 
 
 class SupabaseDB:
@@ -17,10 +22,17 @@ class SupabaseDB:
     """
 
     def __init__(self, config: Config, admin: bool = False):
-        self.config = config
-        self.supabase_conn: Client = config.get_supabase_connection(write_access=admin)
-        self.user_id: Optional[str] = None
-        self.user_email: Optional[str] = None
+        try:
+            self.config = config
+            self.user_id: Optional[str] = None
+            self.user_email: Optional[str] = None
+            self.supabase_conn: Client = config.get_supabase_connection(
+                write_access=admin
+            )
+        except ConfigError:
+            raise
+        except Exception as e:
+            raise SupabaseConnectionError(e) from e
 
     def sign_in(self, email: str, password: str) -> Tuple[bool, str]:
         """Authenticates a user with email and password."""
@@ -60,8 +72,8 @@ class SupabaseDB:
         try:
             self.supabase_conn.auth.sign_out()
             self.user_id = None
-        except Exception:
-            pass
+        except Exception as e:
+            self.config.logger.warning("Supabase sign_out failed: %s", e, exc_info=True)
 
     def get_threads(self) -> List[Dict[str, Any]]:
         """Fetches all conversation threads for the current user."""
@@ -162,8 +174,11 @@ class SupabaseDB:
                 "thread_id", thread_id
             ).execute()
             return True
+        except SupabaseConnectionError as e:
+            self.config.logger.error(e)
+            return False
         except Exception as e:
-            self.config.logger.error(f"Failed to delete thread {thread_id}: {e}")
+            self.config.logger.error(SupabaseQueryError(e))
             return False
 
     def delete_user(self, user_id: str) -> bool:
@@ -188,44 +203,109 @@ class SupabaseDB:
 
             # 3. Delete from Supabase Auth (This cascades to 'threads' and 'messages' tables in public schema)
             # This requires service_role key
-            self.supabase_conn.auth.admin.delete_user(user_id)
+            try:
+                self.supabase_conn.auth.admin.delete_user(user_id)
+            except Exception as e:
+                raise SupabaseQueryError(e) from e
             return True
+        except SupabaseConnectionError as e:
+            self.config.logger.error(e)
+            return False
+        except SupabaseQueryError as e:
+            self.config.logger.error(e)
+            return False
         except Exception as e:
-            self.config.logger.error(f"Failed to delete user {user_id}: {e}")
+            self.config.logger.error(SupabaseQueryError(e))
             return False
 
     def insert_schema_cache(self, key: str, content: Any) -> bool:
         """Inserts a new schema version into the history. Requires admin=True."""
         try:
-            # Using Supabase client for insert (creates a new row)
-            self.supabase_conn.table("schema_cache").insert(
-                {"key": key, "content": content}
-            ).execute()
+            try:
+                if hasattr(content, "model_dump"):
+                    payload = content.model_dump(mode="json")
+                elif isinstance(content, dict):
+                    payload = json.loads(json.dumps(content, default=str))
+                else:
+                    payload = content
+            except (TypeError, ValueError) as e:
+                raise SupabaseQueryError(e) from e
+
+            def _insert() -> None:
+                self.supabase_conn.table("schema_cache").insert(
+                    {"key": key, "content": payload}
+                ).execute()
+
+            retry_transient_network(_insert)
             return True
+        except NetworkRetryExhaustedError as e:
+            self.config.logger.error(SupabaseQueryError(e))
+            return False
+        except SupabaseQueryError as e:
+            self.config.logger.error(e)
+            return False
         except Exception as e:
-            self.config.logger.error(f"Failed to insert schema cache: {e}")
+            self.config.logger.error(SupabaseQueryError(e))
             return False
 
     def get_schema_cache(self, key: str) -> Optional[Dict[str, Any]]:
         """Retrieves a schema context from the cache."""
         try:
-            response = (
-                self.supabase_conn.table("schema_cache")
-                .select("content, updated_at")
-                .eq("key", key)
-                .order("updated_at", desc=True)
-                .limit(1)
-                .execute()
+
+            def _fetch():
+                return (
+                    self.supabase_conn.table("schema_cache")
+                    .select("content, updated_at")
+                    .eq("key", key)
+                    .order("updated_at", desc=True)
+                    .limit(1)
+                    .execute()
+                )
+
+            response = retry_transient_network(_fetch)
+            if not response.data:
+                return None
+
+            raw = response.data[0]["content"]
+            row_updated = response.data[0].get("updated_at")
+
+            try:
+                if isinstance(raw, str):
+                    payload = json.loads(raw)
+                elif isinstance(raw, dict):
+                    payload = json.loads(json.dumps(raw, default=str))
+                else:
+                    self.config.logger.warning(
+                        f"Schema cache for key '{key}' has unexpected content type {type(raw).__name__}; ignoring"
+                    )
+                    return None
+
+                if row_updated is not None:
+                    if isinstance(row_updated, datetime):
+                        payload["updated_at"] = row_updated.isoformat()
+                    else:
+                        payload["updated_at"] = str(row_updated)
+            except json.JSONDecodeError as e:
+                self.config.logger.warning(
+                    f"Schema cache for key '{key}' has invalid JSON: {SupabaseQueryError(e)}"
+                )
+                return None
+
+            return payload
+        except NetworkRetryExhaustedError as e:
+            self.config.logger.warning(
+                f"Supabase schema_cache read failed for key '{key}' (network retries exhausted): {SupabaseQueryError(e)}"
             )
-            if response.data:
-                content = response.data[0]["content"]
-                # Inject the updated_at from the table into the schema dict
-                content["updated_at"] = response.data[0]["updated_at"]
-                return content
+            return None
+        except (KeyError, IndexError, TypeError) as e:
+            self.config.logger.warning(
+                f"Supabase schema_cache read failed for key '{key}' (unexpected response shape): {SupabaseQueryError(e)}"
+            )
             return None
         except Exception as e:
-            # We don't log a full error here as it's common for cache to be empty on first run
-            self.config.logger.info(f"Schema cache miss for key '{key}': {e}")
+            self.config.logger.warning(
+                f"Supabase schema_cache read failed for key '{key}': {SupabaseQueryError(e)}"
+            )
             return None
 
     def create_tables(self):
@@ -305,11 +385,16 @@ class SupabaseDB:
             ),
         ]
 
-        for query, name in tasks:
-            if name in ["threads", "messages", "schema_cache"]:
-                self._execute_query(query, f"Creating {name} table")
-            else:
-                self._execute_query(query, "Adding policies...")
+        try:
+            for query, name in tasks:
+                if name in ["threads", "messages", "schema_cache"]:
+                    self._execute_query(query, f"Creating {name} table")
+                else:
+                    self._execute_query(query, "Adding policies...")
+        except SupabaseConnectionError:
+            raise
+        except Exception as e:
+            raise SupabaseConnectionError(e) from e
 
     def drop_tables(self):
         """Drops the tables from Supabase using psycopg2."""
@@ -333,8 +418,13 @@ class SupabaseDB:
             (checkpoints_deletion, "checkpoints"),
         ]
 
-        for query, name in tasks:
-            self._execute_query(query, f"Dropping {name} table")
+        try:
+            for query, name in tasks:
+                self._execute_query(query, f"Dropping {name} table")
+        except SupabaseConnectionError:
+            raise
+        except Exception as e:
+            raise SupabaseConnectionError(e) from e
 
     def _execute_query(self, query: str, action_name: str):
         """Helper to execute a single query using psycopg2."""
@@ -347,7 +437,7 @@ class SupabaseDB:
         except Exception as e:
             if conn:
                 conn.rollback()
-            raise SupabaseConnectionError(f"{action_name} failed: {str(e)}")
+            raise SupabaseConnectionError(e) from e
         finally:
             if conn:
                 conn.close()

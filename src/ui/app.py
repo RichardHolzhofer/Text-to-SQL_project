@@ -66,7 +66,7 @@ client = get_client()
 # Initialize Nodes
 @st.cache_resource
 def get_nodes():
-    return TextToSQLNodes()
+    return TextToSQLNodes(config=config)
 
 
 nodes = get_nodes()
