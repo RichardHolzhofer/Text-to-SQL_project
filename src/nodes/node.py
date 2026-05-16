@@ -46,6 +46,15 @@ class TextToSQLNodes:
             self.enhancement_schema_path = "embeddings/_embeddings_schema.yml"
             self.safety_limit = 1000
             self.review_language = "Portuguese"
+            # Layer 1 Protection: Exclude sensitive tables and columns from the LLM schema
+            self.exclude_tables = []
+            self.exclude_columns = [
+                "credit_card_amount",
+                "boleto_amount",
+                "voucher_amount",
+                "customer_zip_code",
+                "max_installments",
+            ]
             logger.info("TextToSQLNodes initialized using Config LLMs and Supabase.")
         except Exception as e:
             logger.exception("Failed to initialize TextToSQLNodes.")
@@ -106,7 +115,34 @@ class TextToSQLNodes:
             unified_model_list = mart_schema_yaml.get("models", [])
             unified_model_list.extend(enhancement_schema_yaml.get("models", []))
 
-            logger.info(f"Identified {len(unified_model_list)} models to extract.")
+            # --- Layer 1 Filtering: Prune sensitive tables and columns ---
+            filtered_models = []
+            for model in unified_model_list:
+                model_name = model.get("name")
+                if model_name in self.exclude_tables:
+                    logger.info(f"Layer 1: Filtering out entire table '{model_name}'")
+                    continue
+
+                if "columns" in model and self.exclude_columns:
+                    original_cols = model["columns"]
+                    model["columns"] = [
+                        c
+                        for c in original_cols
+                        if c.get("name") not in self.exclude_columns
+                    ]
+                    removed_count = len(original_cols) - len(model["columns"])
+                    if removed_count > 0:
+                        logger.info(
+                            f"Layer 1: Filtered {removed_count} sensitive columns from '{model_name}'"
+                        )
+
+                filtered_models.append(model)
+
+            unified_model_list = filtered_models
+
+            logger.info(
+                f"Identified {len(unified_model_list)} models to extract after filtering."
+            )
 
             db_tables = []
 
@@ -184,6 +220,7 @@ class TextToSQLNodes:
                 output_schema=Router,
                 use_fast_llm=True,
                 runnable_config=config,
+                use_input_guardrail=True,
             )
 
             return {"router": response}
@@ -604,6 +641,7 @@ class TextToSQLNodes:
                 chat_history=state.chat_history,
                 use_fast_llm=False,
                 runnable_config=config,
+                use_output_guardrail=True,
             )
             answer = response.content.strip()
 
@@ -664,6 +702,7 @@ class TextToSQLNodes:
                 chat_history=state.chat_history,
                 use_fast_llm=False,  # Use smart LLM for better thematic grouping
                 runnable_config=config,
+                use_output_guardrail=True,
             )
             answer = response.content.strip()
 

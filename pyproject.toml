@@ -32,6 +32,7 @@ dependencies = [
     "langchain-openai>=1.2.1",
     "langgraph-cli[inmem]>=0.4.25",
     "langgraph-sdk>=0.3.13",
+    "llm-guard>=0.3.15",
 ]
 
 [tool.ruff]
