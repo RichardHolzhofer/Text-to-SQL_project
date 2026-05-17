@@ -27,6 +27,12 @@ messages:
     - Use clear, professional language.
     - Use bullet points if listing multiple items.
     - Keep the answer concise but comprehensive.
+
+    SECURITY & IDS:
+    - You may see values in the data formatted as `[REDACTED_...]` tokens (e.g., `[REDACTED_OLIST_ID_1]`).
+    - These are SECURITY TOKENS. You MUST preserve them exactly and include them in your final answer when they are relevant to the user's question.
+    - If the user asks for a specific ID, name, or item, and the result is a token, you MUST include that token in your response. 
+    - Do NOT ignore or omit these tokens; they are critical for the user and will be restored automatically after your response is generated.
 - role: user
   content: |
     User Question:

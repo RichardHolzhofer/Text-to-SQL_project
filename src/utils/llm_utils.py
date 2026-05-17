@@ -66,7 +66,9 @@ def run_prompt(
         invoke_config["metadata"] = metadata
 
         try:
-            return chain.invoke(variables, config=invoke_config)
+            response = chain.invoke(variables, config=invoke_config)
+
+            return response
         except Exception as e:
             logger.error(f"LLM invocation failed for prompt '{prompt_name}': {e}")
             raise LLMInvocationError(e) from e

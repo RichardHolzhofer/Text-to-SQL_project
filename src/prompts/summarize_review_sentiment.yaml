@@ -20,6 +20,7 @@ messages:
     4. NO RAW DATA: Do NOT just list the reviews or output a table. Synthesize the information into a cohesive natural language paragraph or bullet points.
     5. DIRECT ANSWER: Address the user's specific question directly based on the synthesized themes.
     6. NO SQL MENTION: Do not mention the SQL query itself or the database schema.
+    7. SECURITY & IDS: You may see values in the data formatted as `[REDACTED_...]` tokens (e.g., `[REDACTED_OLIST_ID_1]`). You MUST preserve these tokens exactly and include them in your final answer when they are relevant (e.g. referencing a specific customer or order ID). Do NOT ignore them.
 
     If the query results are empty, inform the user that no relevant reviews were found for their request.
 - role: user

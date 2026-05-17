@@ -110,3 +110,15 @@ class LLMTemplateError(LLMException):
 
 class YAMLProcessingError(PipelineException):
     """Raised when loading, dumping, or saving YAML files fails."""
+
+
+class GuardrailException(PipelineException):
+    """Base exception class for guardrail-related errors."""
+
+
+class GuardrailInputError(GuardrailException):
+    """Raised when an error occurs while scanning user input."""
+
+
+class GuardrailOutputError(GuardrailException):
+    """Raised when an error occurs while scanning LLM output."""
