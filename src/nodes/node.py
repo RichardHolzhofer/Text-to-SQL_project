@@ -7,6 +7,7 @@ from langchain_core.runnables import RunnableConfig
 from src.config.config import Config
 from src.database.db import SupabaseDB
 from src.exceptions.exception import NodeException, SchemaBuildError, SQLGenerationError
+from src.guardrails.guardrails import get_guardrails
 from src.logger.logger import logger
 from src.states.state import (
     RelationshipDigest,
@@ -59,6 +60,39 @@ class TextToSQLNodes:
         except Exception as e:
             logger.exception("Failed to initialize TextToSQLNodes.")
             raise NodeException(e)
+
+    def input_guardrail_node(self, state: TextToSQLState, config: RunnableConfig):
+        """
+        Scans the user's question for PII and prompt injection before it hits the LLM.
+        """
+        logger.info("Node: Input Guardrail")
+        guardrails = get_guardrails()
+
+        # 1. Sanitize the current question
+        sanitized_question = guardrails.scan_user_input(state.question)
+
+        # Detect if it was flagged/blocked (contains standard safety text)
+        is_blocked = "flagged for safety reasons" in sanitized_question
+
+        if is_blocked:
+            logger.warning(
+                "Prompt injection / security threat flagged. Short-circuiting workflow."
+            )
+            return {
+                "sanitized_question": sanitized_question,
+                "answer": sanitized_question,  # Populate answer immediately
+                "chat_history": [AIMessage(content=sanitized_question)],
+            }
+
+        # 2. Sanitize the chat history (messages from previous turns)
+        # This prevents PII saved in the DB from leaking back to the LLM
+        sanitized_history = guardrails.scan_history(state.chat_history)
+
+        # Populate sanitized_question and sanitized_history
+        return {
+            "sanitized_question": sanitized_question,
+            "chat_history": sanitized_history,
+        }
 
     def build_schema(
         self,
@@ -115,7 +149,7 @@ class TextToSQLNodes:
             unified_model_list = mart_schema_yaml.get("models", [])
             unified_model_list.extend(enhancement_schema_yaml.get("models", []))
 
-            # --- Layer 1 Filtering: Prune sensitive tables and columns ---
+            # Data Protection Filtering: Prune sensitive tables and columns
             filtered_models = []
             for model in unified_model_list:
                 model_name = model.get("name")
@@ -215,12 +249,11 @@ class TextToSQLNodes:
             # Run structured routing
             response = run_prompt(
                 prompt_name="evaluate_intent",
-                variables={"question": state.question},
+                variables={"question": state.sanitized_question},
                 config=self.config,
                 output_schema=Router,
                 use_fast_llm=True,
                 runnable_config=config,
-                use_input_guardrail=True,
             )
 
             return {"router": response}
@@ -235,13 +268,15 @@ class TextToSQLNodes:
         Extracts the search concept from the question and generates its embedding.
         """
         try:
-            logger.info(f"Extracting search concept for question: '{state.question}'")
+            logger.info(
+                f"Extracting search concept for question: '{state.sanitized_question}'"
+            )
 
             # 1. Generate search concept for embedding
             concept_response = run_prompt(
                 prompt_name="extract_search_concept",
                 variables={
-                    "question": state.question,
+                    "question": state.sanitized_question,
                     "target_language": self.review_language,
                 },
                 config=self.config,
@@ -276,7 +311,7 @@ class TextToSQLNodes:
         """
         try:
             logger.info(
-                f"Generating Semantic SQL query for question: '{state.question}'"
+                f"Generating Semantic SQL query for question: '{state.sanitized_question}'"
             )
 
             # Serialize the schema so the LLM can read it
@@ -287,7 +322,7 @@ class TextToSQLNodes:
                 prompt_name="generate_semantic_review_sql",
                 variables={
                     "schema_context": schema_json,
-                    "question": state.question,
+                    "question": state.sanitized_question,
                     "threshold": self.semantic_search_threshold,
                 },
                 config=self.config,
@@ -347,7 +382,7 @@ class TextToSQLNodes:
     def generate_sql(self, state: TextToSQLState, config: RunnableConfig):
         try:
             logger.info(
-                f"Generating SQL query for question: '{state.question}' (Iteration: {state.validator.iteration_count + 1})"
+                f"Generating SQL query for question: '{state.sanitized_question}' (Iteration: {state.validator.iteration_count + 1})"
             )
 
             # Serialize the schema so the LLM can read it
@@ -358,7 +393,7 @@ class TextToSQLNodes:
                 prompt_name="generate_sql",
                 variables={
                     "schema_context": schema_json,
-                    "question": state.question,
+                    "question": state.sanitized_question,
                 },
                 config=self.config,
                 chat_history=state.chat_history,
@@ -559,6 +594,53 @@ class TextToSQLNodes:
                 ],
             }
 
+    def results_guardrail_node(self, state: TextToSQLState, config: RunnableConfig):
+        """
+        Anonymizes IDs in the query results so the LLM doesn't see raw PII.
+        """
+        logger.info("Node: Results Guardrail")
+        if not state.query_results:
+            return {"sanitized_query_results": None}
+
+        guardrails = get_guardrails()
+        sanitized = guardrails.scan_data(state.query_results)
+        return {"sanitized_query_results": sanitized}
+
+    def deanonymize_sql_node(self, state: TextToSQLState, config: RunnableConfig):
+        """
+        Restores real IDs in the generated SQL so it can be executed by the database.
+        """
+        logger.info("Node: Deanonymize SQL")
+        if not state.generated_sql or not state.generated_sql.sql_query:
+            return {}
+
+        guardrails = get_guardrails()
+        # We use the original question as context for the deanonymizer
+        restored_sql = guardrails.scan_llm_output(
+            state.sanitized_question, state.generated_sql.sql_query
+        )
+
+        return {
+            "generated_sql": state.generated_sql.model_copy(
+                update={"sql_query": restored_sql}
+            )
+        }
+
+    def deanonymize_answer_node(self, state: TextToSQLState, config: RunnableConfig):
+        """
+        Restores real IDs in the natural language answer for the final user.
+        """
+        logger.info("Node: Deanonymize Answer")
+        if not state.answer:
+            return {}
+
+        guardrails = get_guardrails()
+        restored_answer = guardrails.scan_llm_output(
+            state.sanitized_question, state.answer
+        )
+
+        return {"answer": restored_answer}
+
     def generate_tabular_answer(self, state: TextToSQLState, config: RunnableConfig):
         """
         Passes the query results to the tabular_answer state field, truncated to the display limit.
@@ -604,7 +686,9 @@ class TextToSQLNodes:
         Uses an LLM to generate a natural language summary of the query results.
         """
         try:
-            logger.info("Generating natural language answer...")
+            logger.info(
+                f"Generating natural language answer for question: '{state.sanitized_question}'"
+            )
 
             # If the query was unsupported, just return the explanation as the answer
             if state.generated_sql and state.generated_sql.unsupported_explanation:
@@ -615,10 +699,16 @@ class TextToSQLNodes:
                 }
 
             limit = self.standard_nl_limit
-            total_count = len(state.query_results) if state.query_results else 0
+            total_count = (
+                len(state.sanitized_query_results)
+                if state.sanitized_query_results
+                else 0
+            )
 
             truncated_results = (
-                state.query_results[:limit] if state.query_results else []
+                state.sanitized_query_results[:limit]
+                if state.sanitized_query_results
+                else []
             )
             result_count = len(truncated_results)
 
@@ -631,7 +721,7 @@ class TextToSQLNodes:
             response = run_prompt(
                 prompt_name="generate_nl_answer",
                 variables={
-                    "question": state.question,
+                    "question": state.sanitized_question,
                     "sql_query_results": results_str,
                     "result_count": result_count,
                     "total_count": total_count,
@@ -641,7 +731,6 @@ class TextToSQLNodes:
                 chat_history=state.chat_history,
                 use_fast_llm=False,
                 runnable_config=config,
-                use_output_guardrail=True,
             )
             answer = response.content.strip()
 
@@ -666,7 +755,9 @@ class TextToSQLNodes:
         Uses an LLM to generate a specialized natural language summary of review sentiments.
         """
         try:
-            logger.info("Generating review sentiment summary...")
+            logger.info(
+                f"Generating review sentiment summary for question: '{state.sanitized_question}'"
+            )
 
             # If the query was unsupported, just return the explanation as the answer
             if state.generated_sql and state.generated_sql.unsupported_explanation:
@@ -677,10 +768,16 @@ class TextToSQLNodes:
                 }
 
             limit = self.semantic_nl_limit
-            total_count = len(state.query_results) if state.query_results else 0
+            total_count = (
+                len(state.sanitized_query_results)
+                if state.sanitized_query_results
+                else 0
+            )
 
             truncated_results = (
-                state.query_results[:limit] if state.query_results else []
+                state.sanitized_query_results[:limit]
+                if state.sanitized_query_results
+                else []
             )
             result_count = len(truncated_results)
 
@@ -692,7 +789,7 @@ class TextToSQLNodes:
             response = run_prompt(
                 prompt_name="summarize_review_sentiment",
                 variables={
-                    "question": state.question,
+                    "question": state.sanitized_question,
                     "sql_query_results": results_str,
                     "result_count": result_count,
                     "total_count": total_count,
@@ -702,7 +799,6 @@ class TextToSQLNodes:
                 chat_history=state.chat_history,
                 use_fast_llm=False,  # Use smart LLM for better thematic grouping
                 runnable_config=config,
-                use_output_guardrail=True,
             )
             answer = response.content.strip()
 
@@ -748,8 +844,10 @@ class TextToSQLNodes:
             self.db.user_email = user_email
 
             # 3. Ensure Supabase chat history thread entry exists (upsert)
-            # Use the question as title if it's a new thread
-            self.db.upsert_chat_thread(thread_id, title=state.question[:30] + "...")
+            # Use the sanitized question as title to prevent PII in thread titles
+            self.db.upsert_chat_thread(
+                thread_id, title=state.sanitized_question[:30] + "..."
+            )
 
             # 4. Determine Assistant Message content and type
             content = None
@@ -763,7 +861,10 @@ class TextToSQLNodes:
                 msg_type = "dataframe"
             elif state.answer:
                 content = state.answer
-                msg_type = "text"
+                if "flagged for safety reasons" in state.answer:
+                    msg_type = "warning"
+                else:
+                    msg_type = "text"
             elif state.generated_sql and state.generated_sql.unsupported_explanation:
                 content = state.generated_sql.unsupported_explanation
                 msg_type = "warning"

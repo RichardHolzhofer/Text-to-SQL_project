@@ -364,8 +364,19 @@ if prompt:
                 )
 
                 # Determine response type and display
+                # Check for prompt injection safety block
+                if (
+                    result.get("answer")
+                    and "flagged for safety reasons" in result["answer"]
+                ):
+                    answer = result["answer"]
+                    st.warning(answer)
+                    st.session_state.messages.append(
+                        {"role": "assistant", "type": "warning", "content": answer}
+                    )
+
                 # Check for error/unsupported explanation
-                if result.get("generated_sql") and result["generated_sql"].get(
+                elif result.get("generated_sql") and result["generated_sql"].get(
                     "unsupported_explanation"
                 ):
                     explanation = result["generated_sql"]["unsupported_explanation"]

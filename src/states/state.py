@@ -189,8 +189,16 @@ class TabularResponse(BaseModel):
 
 class TextToSQLState(BaseModel):
     question: str
-    user_id: Optional[str] = None
-    user_email: Optional[str] = None
+    sanitized_question: Optional[str] = Field(
+        default=None,
+        description="Redacted version of the question for LLM consumption.",
+    )
+    user_id: Optional[str] = Field(
+        default=None, description="The unique UUID of the authenticated user."
+    )
+    user_email: Optional[str] = Field(
+        default=None, description="The email address of the authenticated user."
+    )
     chat_history: Annotated[List[BaseMessage], add_messages] = Field(
         default_factory=list
     )
@@ -213,6 +221,10 @@ class TextToSQLState(BaseModel):
     # SQL Executer
     query_results: Optional[List[dict]] = Field(
         default=None, description="The results from executing the SQL query."
+    )
+    sanitized_query_results: Optional[List[dict]] = Field(
+        default=None,
+        description="Redacted version of query results for LLM consumption.",
     )
     is_capped: bool = Field(
         default=False,

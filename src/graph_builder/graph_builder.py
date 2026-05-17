@@ -25,6 +25,12 @@ class TextToSQLGraph:
             return "semantic"
         return "general"
 
+    def _route_after_input_guardrail(self, state: TextToSQLState):
+        # If the input was blocked by safety guardrails, skip directly to persistence
+        if state.answer and "flagged for safety reasons" in state.answer:
+            return "blocked"
+        return "continue"
+
     def _route_after_validator(self, state: TextToSQLState):
         if state.validator and not state.validator.is_valid_query:
             iteration = state.validator.iteration_count
@@ -42,6 +48,12 @@ class TextToSQLGraph:
                     return "semantic_generator"
                 return "standard_generator"
 
+        return "anonymize"
+
+    def _route_to_answer(self, state: TextToSQLState):
+        """
+        Routes to the appropriate answer generation node after results are anonymized.
+        """
         if (
             state.router
             and state.router.is_review_query
@@ -52,6 +64,7 @@ class TextToSQLGraph:
 
         if state.router and state.router.route == "tab":
             return "tabular"
+
         return "nl"
 
     def build_graph(self, checkpointer=None):
@@ -60,6 +73,7 @@ class TextToSQLGraph:
 
         # Nodes
         workflow.add_node("schema_builder_node", self.nodes.build_schema)
+        workflow.add_node("input_guardrail_node", self.nodes.input_guardrail_node)
         workflow.add_node("router_query_node", self.nodes.route_format)
         workflow.add_node("query_generator_node", self.nodes.generate_sql)
 
@@ -73,6 +87,9 @@ class TextToSQLGraph:
         )
         workflow.add_node("validator_node", self.nodes.validate_sql)
         workflow.add_node("query_executer_node", self.nodes.execute_sql)
+        workflow.add_node("results_guardrail_node", self.nodes.results_guardrail_node)
+        workflow.add_node("deanonymize_sql_node", self.nodes.deanonymize_sql_node)
+        workflow.add_node("deanonymize_answer_node", self.nodes.deanonymize_answer_node)
         workflow.add_node(
             "generate_tabular_answer_node",
             self.nodes.generate_tabular_answer,
@@ -86,7 +103,15 @@ class TextToSQLGraph:
 
         # Edges
         workflow.set_entry_point("schema_builder_node")
-        workflow.add_edge("schema_builder_node", "router_query_node")
+        workflow.add_edge("schema_builder_node", "input_guardrail_node")
+        workflow.add_conditional_edges(
+            "input_guardrail_node",
+            self._route_after_input_guardrail,
+            {
+                "blocked": "persistence_node",
+                "continue": "router_query_node",
+            },
+        )
 
         workflow.add_conditional_edges(
             "router_query_node",
@@ -100,8 +125,9 @@ class TextToSQLGraph:
         workflow.add_edge(
             "extract_semantic_concept_node", "semantic_query_generator_node"
         )
-        workflow.add_edge("query_generator_node", "validator_node")
-        workflow.add_edge("semantic_query_generator_node", "validator_node")
+        workflow.add_edge("query_generator_node", "deanonymize_sql_node")
+        workflow.add_edge("semantic_query_generator_node", "deanonymize_sql_node")
+        workflow.add_edge("deanonymize_sql_node", "validator_node")
 
         workflow.add_conditional_edges(
             "validator_node",
@@ -119,6 +145,14 @@ class TextToSQLGraph:
             {
                 "standard_generator": "query_generator_node",
                 "semantic_generator": "semantic_query_generator_node",
+                "anonymize": "results_guardrail_node",
+            },
+        )
+
+        workflow.add_conditional_edges(
+            "results_guardrail_node",
+            self._route_to_answer,
+            {
                 "tabular": "generate_tabular_answer_node",
                 "nl": "generate_nl_answer_node",
                 "review_nl": "summarize_review_sentiment_node",
@@ -126,8 +160,9 @@ class TextToSQLGraph:
         )
 
         workflow.add_edge("generate_tabular_answer_node", "persistence_node")
-        workflow.add_edge("generate_nl_answer_node", "persistence_node")
-        workflow.add_edge("summarize_review_sentiment_node", "persistence_node")
+        workflow.add_edge("generate_nl_answer_node", "deanonymize_answer_node")
+        workflow.add_edge("summarize_review_sentiment_node", "deanonymize_answer_node")
+        workflow.add_edge("deanonymize_answer_node", "persistence_node")
         workflow.add_edge("persistence_node", END)
 
         # Compile and add checkpointer for memory

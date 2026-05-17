@@ -14,25 +14,12 @@ def run_prompt(
     output_schema=None,
     use_fast_llm=False,
     runnable_config=None,
-    use_input_guardrail=False,
-    use_output_guardrail=False,
 ):
     """
     Unified helper to load a prompt template, bind the correct LLM (with overrides),
     handle conversational history, and execute the chain with tracing.
     """
-    from src.guardrails import TextToSQLGuardrails
-
     try:
-        # 0. Input Guardrail
-        if use_input_guardrail:
-            guardrails = TextToSQLGuardrails()
-            # Scan the 'question' variable if it exists, as it's the primary user input
-            if "question" in variables and isinstance(variables["question"], str):
-                variables["question"] = guardrails.scan_user_input(
-                    variables["question"]
-                )
-
         # 1. Load native template
         try:
             template = get_prompt_template(prompt_name, config)
@@ -80,21 +67,6 @@ def run_prompt(
 
         try:
             response = chain.invoke(variables, config=invoke_config)
-
-            # 7. Output Guardrail
-            if use_output_guardrail:
-                from src.guardrails import TextToSQLGuardrails
-
-                guardrails = TextToSQLGuardrails()
-                # We need a prompt context for output scanners (can be the user question)
-                prompt_context = variables.get("question", "")
-
-                if hasattr(response, "content") and isinstance(response.content, str):
-                    response.content = guardrails.scan_llm_output(
-                        prompt_context, response.content
-                    )
-                elif isinstance(response, str):
-                    response = guardrails.scan_llm_output(prompt_context, response)
 
             return response
         except Exception as e:
