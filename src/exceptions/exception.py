@@ -122,3 +122,19 @@ class GuardrailInputError(GuardrailException):
 
 class GuardrailOutputError(GuardrailException):
     """Raised when an error occurs while scanning LLM output."""
+
+
+class MCPException(PipelineException):
+    """Base exception class for all MCP server related errors."""
+
+
+class MCPConfigError(MCPException):
+    """Raised when critical MCP credentials or configuration variables are missing."""
+
+
+class LangGraphExecutionError(MCPException):
+    """Raised when communication with the LangGraph run API fails."""
+
+
+class GraphResponseError(MCPException):
+    """Raised when the graph returns an invalid, empty, or unexpected response format."""

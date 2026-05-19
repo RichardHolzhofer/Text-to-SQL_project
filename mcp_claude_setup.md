@@ -15,19 +15,21 @@ Before starting, ensure you have the following installed on your host system:
 
 ---
 
-## 🔑 Step 1: Authenticate and Set Up Your Session
+## 🔑 Step 1: Configure Your Authentication Credentials
 
-The database requires user authentication to secure calls and trace execution (via Langfuse). Run the interactive local CLI setup script to authenticate and write your credentials to `.env`:
+The database requires user authentication to secure calls and trace execution (via Langfuse). The MCP server features a **zero-touch, self-configuring dynamic onboarding flow**! You do not need to run any manual commands to register or log in.
 
-```bash
-# Run the local python setup script using uv
-uv run python src/mcp/setup_mcp_auth.py
+Simply open your local `.env` file in your project root and configure your MCP credentials:
+
+```env
+# MCP Client Authentication (Silent background login/signup)
+MCP_USER_EMAIL=your_email@example.com
+MCP_USER_PASSWORD=your_secure_password
 ```
 
-This script will:
-1. Securely log you into Supabase using your developer email and password.
-2. Automatically write `MCP_USER_ID` and `MCP_USER_EMAIL` into your `.env` file.
-3. List your **15 most recent chat threads** (with their IDs) so you can easily copy and paste one to continue a previous conversation in the MCP server!
+### How the Zero-Touch Flow Works:
+* **Automatic Registration:** If the email does not exist yet in Supabase, the background container will **silently register your new user account** on the very first query!
+* **Silent Login:** The server dynamically logs you in, retrieves your active `user_id` inside the container memory, and warms up your LangGraph session automatically.
 
 ---
 

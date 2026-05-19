@@ -25,4 +25,4 @@ EXPOSE 8000
 HEALTHCHECK CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/sse')"
 
 # Run the FastMCP server
-ENTRYPOINT ["uv", "run", "python", "src/mcp/server.py"]
+ENTRYPOINT ["uv", "run", "python", "-m", "src.mcp.server"]
