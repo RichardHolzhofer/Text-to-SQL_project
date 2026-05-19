@@ -96,6 +96,13 @@ class RelationshipDigest(BaseModel):
 ### State for Router
 
 
+class ConversationEvaluator(BaseModel):
+    is_general_conversation: bool = Field(
+        default=False,
+        description="True if the message is general conversation, greeting, or off-topic. False if it is related to databases, data analysis, or querying information.",
+    )
+
+
 class Router(BaseModel):
     route: Literal["nl", "tab"] = Field(
         default="nl",
@@ -201,6 +208,11 @@ class TextToSQLState(BaseModel):
     )
     chat_history: Annotated[List[BaseMessage], add_messages] = Field(
         default_factory=list
+    )
+
+    is_general_conversation: bool = Field(
+        default=False,
+        description="Flag indicating if the user's input is a general conversation rather than a database query.",
     )
 
     # Schema extraction

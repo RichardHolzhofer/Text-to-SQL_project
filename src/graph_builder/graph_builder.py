@@ -31,6 +31,11 @@ class TextToSQLGraph:
             return "blocked"
         return "continue"
 
+    def _route_after_conversation_evaluator(self, state: TextToSQLState):
+        if state.is_general_conversation:
+            return "general_conversation"
+        return "sql_routing"
+
     def _route_after_validator(self, state: TextToSQLState):
         if state.validator and not state.validator.is_valid_query:
             iteration = state.validator.iteration_count
@@ -74,6 +79,13 @@ class TextToSQLGraph:
         # Nodes
         workflow.add_node("schema_builder_node", self.nodes.build_schema)
         workflow.add_node("input_guardrail_node", self.nodes.input_guardrail_node)
+        workflow.add_node(
+            "conversation_evaluator_node", self.nodes.conversation_evaluator_node
+        )
+        workflow.add_node(
+            "handle_general_conversation_node",
+            self.nodes.handle_general_conversation_node,
+        )
         workflow.add_node("router_query_node", self.nodes.route_format)
         workflow.add_node("query_generator_node", self.nodes.generate_sql)
 
@@ -109,7 +121,16 @@ class TextToSQLGraph:
             self._route_after_input_guardrail,
             {
                 "blocked": "persistence_node",
-                "continue": "router_query_node",
+                "continue": "conversation_evaluator_node",
+            },
+        )
+
+        workflow.add_conditional_edges(
+            "conversation_evaluator_node",
+            self._route_after_conversation_evaluator,
+            {
+                "general_conversation": "handle_general_conversation_node",
+                "sql_routing": "router_query_node",
             },
         )
 
@@ -162,6 +183,7 @@ class TextToSQLGraph:
         workflow.add_edge("generate_tabular_answer_node", "persistence_node")
         workflow.add_edge("generate_nl_answer_node", "deanonymize_answer_node")
         workflow.add_edge("summarize_review_sentiment_node", "deanonymize_answer_node")
+        workflow.add_edge("handle_general_conversation_node", "deanonymize_answer_node")
         workflow.add_edge("deanonymize_answer_node", "persistence_node")
         workflow.add_edge("persistence_node", END)
 

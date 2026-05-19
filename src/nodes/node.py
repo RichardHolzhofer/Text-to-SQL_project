@@ -10,6 +10,7 @@ from src.exceptions.exception import NodeException, SchemaBuildError, SQLGenerat
 from src.guardrails.guardrails import get_guardrails
 from src.logger.logger import logger
 from src.states.state import (
+    ConversationEvaluator,
     RelationshipDigest,
     Router,
     Schema,
@@ -93,6 +94,51 @@ class TextToSQLNodes:
             "sanitized_question": sanitized_question,
             "chat_history": sanitized_history,
         }
+
+    def conversation_evaluator_node(
+        self, state: TextToSQLState, config: RunnableConfig
+    ):
+        """
+        Determines if the user's question is a general conversation or a database query.
+        """
+        try:
+            logger.info("Node: Conversation Evaluator")
+            response = run_prompt(
+                prompt_name="evaluate_conversation",
+                variables={"question": state.sanitized_question},
+                config=self.config,
+                output_schema=ConversationEvaluator,
+                use_fast_llm=True,
+                runnable_config=config,
+            )
+            return {"is_general_conversation": response.is_general_conversation}
+        except Exception:
+            logger.exception("Failed to evaluate conversation intent.")
+            # Default to false (SQL query) on error
+            return {"is_general_conversation": False}
+
+    def handle_general_conversation_node(
+        self, state: TextToSQLState, config: RunnableConfig
+    ):
+        """
+        Handles general conversations using a standard LLM.
+        """
+        try:
+            logger.info("Node: Handle General Conversation")
+            response = run_prompt(
+                prompt_name="general_conversation",
+                variables={"question": state.sanitized_question},
+                config=self.config,
+                chat_history=state.chat_history,
+                use_fast_llm=True,
+                runnable_config=config,
+            )
+            answer = response.content.strip()
+            return {"answer": answer, "chat_history": [AIMessage(content=answer)]}
+        except Exception:
+            logger.exception("Failed to handle general conversation.")
+            answer = "I'm sorry, I'm having trouble responding right now."
+            return {"answer": answer, "chat_history": [AIMessage(content=answer)]}
 
     def build_schema(
         self,
