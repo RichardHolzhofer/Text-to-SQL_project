@@ -68,6 +68,11 @@ class Config:
         self.langgraph_url = os.getenv("LANGGRAPH_URL", "http://localhost:2024")
         self.temperature = self._parse_float_env("LLM_TEMPERATURE", default=0.0)
 
+        # MCP Authentication settings (optional, loaded dynamically)
+        self.mcp_user_id = os.getenv("MCP_USER_ID")
+        self.mcp_user_email = os.getenv("MCP_USER_EMAIL")
+        self.mcp_user_password = os.getenv("MCP_USER_PASSWORD")
+
         # Validation (Optional)
         self._validate_config()
 
@@ -259,3 +264,13 @@ class Config:
             )
             self._embedding_model = OpenAIEmbeddings(model=self.embedding_model)
         return self._embedding_model
+
+    def reload_mcp_credentials(self) -> tuple[str | None, str | None, str | None]:
+        """
+        Reloads .env variables dynamically and returns the latest MCP credentials.
+        """
+        load_dotenv(override=True)
+        self.mcp_user_id = os.getenv("MCP_USER_ID")
+        self.mcp_user_email = os.getenv("MCP_USER_EMAIL")
+        self.mcp_user_password = os.getenv("MCP_USER_PASSWORD")
+        return self.mcp_user_id, self.mcp_user_email, self.mcp_user_password

@@ -1,0 +1,74 @@
+services:
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 1s
+      retries: 5
+    networks:
+      - text-to-sql-network
+
+  langgraph-api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile_api
+    image: text-to-sql-app-api
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    ports:
+      - "8123:8000"
+    env_file:
+      - .env
+    environment:
+      - REDIS_URI=redis://redis:6379
+      - DATABASE_URI=${SUPABASE_DB_URI}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ok')",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - text-to-sql-network
+
+  mcp-server:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile-mcp
+    image: text-to-sql-app-mcp
+    container_name: text-to-sql-mcp
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    ports:
+      - "8080:8000"
+    env_file:
+      - .env
+    environment:
+      - LANGGRAPH_URL=http://langgraph-api:8000
+    depends_on:
+      langgraph-api:
+        condition: service_healthy
+    volumes:
+      - ./downloads:/app/downloads
+    restart: unless-stopped
+    networks:
+      - text-to-sql-network
+
+networks:
+  text-to-sql-network:
+    driver: bridge

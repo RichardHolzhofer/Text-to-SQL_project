@@ -18,11 +18,11 @@ RUN uv sync --frozen --no-install-project --no-dev
 # Copy the entire project into the container
 COPY . .
 
-# Expose the default Streamlit port
-EXPOSE 8501
+# Expose the default FastMCP SSE port
+EXPOSE 8000
 
-# Healthcheck (python:slim has no curl; stdlib urllib is enough)
-HEALTHCHECK CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8501/_stcore/health')"
+# Healthcheck to verify SSE port is accessible
+HEALTHCHECK CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/sse')"
 
-# Run the Streamlit application
-ENTRYPOINT ["uv", "run", "streamlit", "run", "src/ui/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+# Run the FastMCP server
+ENTRYPOINT ["uv", "run", "python", "-m", "src.mcp.server"]
