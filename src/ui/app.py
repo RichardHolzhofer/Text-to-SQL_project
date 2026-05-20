@@ -8,8 +8,10 @@ from langgraph_sdk import get_sync_client
 
 from src.config.config import Config
 from src.database.db import SupabaseDB
+from src.exceptions.exception import UIComponentLoadError, YAMLProcessingError
 from src.nodes.node import TextToSQLNodes
 from src.states.state import TextToSQLState
+from src.utils.ui_utils import load_and_filter_schema
 
 
 @st.cache_data
@@ -24,8 +26,14 @@ def convert_to_csv(data):
 load_dotenv()
 
 # Streamlit Page Configuration
-st.set_page_config(page_title="Text-to-SQL Agent", layout="wide")
-st.title("Text-to-SQL Agent")
+st.set_page_config(page_title="QueryGraph", layout="wide")
+
+try:
+    with open("src/ui/styles/main.css", "r", encoding="utf-8") as f:
+        CUSTOM_CSS = f"<style>\n{f.read()}\n</style>"
+    st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+except Exception as e:
+    st.error(str(UIComponentLoadError(e)))
 
 
 # Initialize Config and Database
@@ -72,66 +80,96 @@ def get_nodes():
 nodes = get_nodes()
 
 
-# --- Sidebar: Authentication ---
-with st.sidebar:
-    st.header("Account")
-    if st.session_state.user_id is None:
-        auth_mode = st.radio("Mode", ["Login", "Sign Up"], horizontal=True)
-        email = st.text_input("Email")
-        password = st.text_input("Password", type="password")
+# --- Authentication & Landing Page ---
+if st.session_state.user_id is None:
+    st.markdown(
+        '<h1 class="landing-title">Query<span class="accent-text">Graph</span></h1>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<p class="landing-subtitle">Bridging the gap between you and your database</p>',
+        unsafe_allow_html=True,
+    )
 
-        if auth_mode == "Login":
-            if st.button("Login"):
-                success, message = db.sign_in(email, password)
-                if success:
-                    st.session_state.user_id = db.user_id
-                    st.session_state.user_email = db.user_email
-                    st.success(message)
-                    st.rerun()
-                else:
-                    st.error(message)
-        else:
-            if st.button("Sign Up"):
-                success, message = db.sign_up(email, password)
-                if success:
-                    st.success(message)
-                else:
-                    st.error(message)
-    else:
-        st.write(f"Logged in as: **{st.session_state.user_email}**")
-        if st.button("Logout", use_container_width=True):
-            db.sign_out()
-            st.session_state.user_id = None
-            st.session_state.user_email = None
-            st.session_state.messages = []
-            st.rerun()
+    col1, col2 = st.columns([1.2, 1], gap="large")
 
-        with st.expander("Danger Zone"):
-            if st.button("Delete Account", type="primary", use_container_width=True):
-                if st.session_state.get("confirm_delete_account"):
-                    # Use an admin instance for deletion
-                    admin_db = SupabaseDB(config, admin=True)
-                    if admin_db.delete_user(st.session_state.user_id):
-                        st.success("Account deleted.")
-                        st.session_state.user_id = None
-                        st.session_state.user_email = None
-                        st.session_state.messages = []
-                        st.session_state.confirm_delete_account = False
+    with col1:
+        try:
+            with open(
+                "src/ui/components/landing_card.html", "r", encoding="utf-8"
+            ) as f:
+                landing_html = f.read()
+            st.markdown(landing_html, unsafe_allow_html=True)
+        except Exception as e:
+            st.error(str(UIComponentLoadError(e)))
+
+    with col2:
+        st.markdown('<div style="padding-top: 1rem;"></div>', unsafe_allow_html=True)
+        with st.container(border=True):
+            st.subheader("Get Started")
+            auth_mode = st.radio(
+                "Mode",
+                ["Login", "Sign Up"],
+                horizontal=True,
+                label_visibility="collapsed",
+            )
+            email = st.text_input("Email")
+            password = st.text_input("Password", type="password")
+
+            if auth_mode == "Login":
+                if st.button("Login", use_container_width=True):
+                    success, message = db.sign_in(email, password)
+                    if success:
+                        st.session_state.user_id = db.user_id
+                        st.session_state.user_email = db.user_email
+                        st.success(message)
                         st.rerun()
                     else:
-                        st.error("Failed to delete account.")
+                        st.error(message)
+            else:
+                if st.button("Sign Up", use_container_width=True):
+                    success, message = db.sign_up(email, password)
+                    if success:
+                        st.success(message)
+                    else:
+                        st.error(message)
+
+    st.stop()
+
+# --- Sidebar: Account ---
+with st.sidebar:
+    st.header("Account")
+    st.write(f"Logged in as: **{st.session_state.user_email}**")
+    if st.button("Logout", use_container_width=True):
+        db.sign_out()
+        st.session_state.user_id = None
+        st.session_state.user_email = None
+        st.session_state.messages = []
+        st.rerun()
+
+    with st.expander("Danger Zone"):
+        if st.button("Delete Account", type="primary", use_container_width=True):
+            if st.session_state.get("confirm_delete_account"):
+                # Use an admin instance for deletion
+                admin_db = SupabaseDB(config, admin=True)
+                if admin_db.delete_user(st.session_state.user_id):
+                    st.success("Account deleted.")
+                    st.session_state.user_id = None
+                    st.session_state.user_email = None
+                    st.session_state.messages = []
+                    st.session_state.confirm_delete_account = False
+                    st.rerun()
                 else:
-                    st.session_state.confirm_delete_account = True
-                    st.warning(
-                        "Are you sure? This will delete ALL your data. Click again to confirm."
-                    )
+                    st.error("Failed to delete account.")
+            else:
+                st.session_state.confirm_delete_account = True
+                st.warning(
+                    "Are you sure? This will delete ALL your data. Click again to confirm."
+                )
 
     st.markdown("---")
 
-# Stop the app here if user is not logged in
-if st.session_state.user_id is None:
-    st.info("Please login or sign up to use the Text-to-SQL Agent.")
-    st.stop()
+st.title("QueryGraph")
 
 # Ensure the database instance knows who the current user is (for session-based calls)
 db.user_id = st.session_state.user_id
@@ -222,28 +260,101 @@ with st.sidebar:
     except Exception:
         last_sync_display = "Error fetching"
 
-    if st.button(
-        "🔄 Sync Schema Metadata",
-        help="Rebuilds the schema cache from Snowflake/dbt (takes ~2 mins)",
-        use_container_width=True,
-    ):
-        with st.status("Syncing metadata...", expanded=True) as status:
-            try:
-                st.write("Building unified schema...")
-                # Create a dummy state with force_refresh=True
-                dummy_state = TextToSQLState(
-                    question="internal_sync", force_refresh=True
-                )
-                # Call the node directly
-                nodes.build_schema(dummy_state)
-                status.update(label="Sync Complete!", state="complete", expanded=False)
-                st.success("Schema metadata updated successfully!")
-                st.rerun()  # Rerun to refresh the timestamp display
-            except Exception as e:
-                status.update(label="Sync Failed", state="error")
-                st.error(f"Sync failed: {e}")
+    col_sync, col_schema = st.columns(2)
+    with col_sync:
+        if st.button(
+            "🔄 Sync Schema",
+            help="Rebuilds the schema cache from Snowflake/dbt (takes ~2 mins)",
+            use_container_width=True,
+        ):
+            with st.status("Syncing metadata...", expanded=True) as status:
+                try:
+                    st.write("Building unified schema...")
+                    # Create a dummy state with force_refresh=True
+                    dummy_state = TextToSQLState(
+                        question="internal_sync", force_refresh=True
+                    )
+                    # Call the node directly
+                    nodes.build_schema(dummy_state)
+                    status.update(
+                        label="Sync Complete!", state="complete", expanded=False
+                    )
+                    st.success("Schema metadata updated successfully!")
+                    st.rerun()  # Rerun to refresh the timestamp display
+                except Exception as e:
+                    status.update(label="Sync Failed", state="error")
+                    st.error(f"Sync failed: {e}")
+    with col_schema:
+        if st.button("Show Schema", use_container_width=True):
+            st.session_state.show_schema_modal = not st.session_state.get(
+                "show_schema_modal", False
+            )
 
     st.caption(f"Last Schema Sync: **{last_sync_display}**")
+
+# Display Schema Modal
+if st.session_state.get("show_schema_modal", False):
+    st.markdown("---")
+    col1, col2 = st.columns([0.8, 0.2])
+    with col1:
+        st.subheader("Database Schema")
+    with col2:
+        if st.button("Close", key="close_schema"):
+            st.session_state.show_schema_modal = False
+            st.rerun()
+
+    try:
+        tables = load_and_filter_schema(
+            schema_path="olist/models/marts/_marts_schema.yml",
+            exclude_tables=nodes.exclude_tables,
+            exclude_columns=nodes.exclude_columns,
+        )
+        if not tables:
+            st.warning(
+                "Could not load schema from olist/models/marts/_marts_schema.yml"
+            )
+        else:
+            st.markdown("```text\nDatabase Schema")
+            table_names = list(tables.keys())
+            for i, t_name in enumerate(table_names):
+                prefix = "└──" if i == len(table_names) - 1 else "├──"
+                st.markdown(f"{prefix} {t_name}")
+            st.markdown("```")
+
+            for t_name, t_data in tables.items():
+                with st.expander(t_name):
+                    # Print tree
+                    tree_str = f"{t_name}\n"
+                    cols = t_data["columns"]
+                    for i, col in enumerate(cols):
+                        prefix = "└──" if i == len(cols) - 1 else "├──"
+                        tags_str = f" ({', '.join(col['tags'])})" if col["tags"] else ""
+                        tree_str += f"{prefix} {col['name']}{tags_str}\n"
+                    st.code(tree_str, language="text")
+
+                    # Print ascii table
+                    desc_lines = t_data["description"].split("\n")
+                    desc = desc_lines[0].strip() if desc_lines else "No description"
+                    if len(desc) > 35:
+                        desc = desc[:32] + "..."
+
+                    box_width = 50
+                    table_str = f"┌{'─' * (box_width)}┐\n"
+                    table_str += f"│ {t_name:<{box_width - 1}}│\n"
+                    table_str += f"│ {desc:<{box_width - 1}}│\n"
+                    table_str += f"├{'─' * (box_width)}┤\n"
+                    for col in cols:
+                        tag_str = " ".join(col["tags"])
+                        col_row = f"{col['name']:<25} {col['type']:<8} {tag_str:<4}"
+                        table_str += f"│ {col_row:<{box_width - 1}}│\n"
+                    table_str += f"└{'─' * (box_width)}┘\n"
+                    st.code(table_str, language="text")
+    except YAMLProcessingError as e:
+        st.error(str(e))
+    except Exception as e:
+        st.error(f"Unexpected error rendering schema: {e}")
+
+    st.markdown("---")
 
 # Display chat messages from history
 if len(st.session_state.messages) == 0:
@@ -269,6 +380,13 @@ for i, msg in enumerate(st.session_state.messages):
             st.dataframe(df)
         elif msg["type"] == "warning":
             st.warning(msg["content"])
+
+        if msg.get("thought_process"):
+            with st.expander("Thought Process"):
+                st.write(msg["thought_process"])
+        if msg.get("sql_query"):
+            with st.expander("Generated SQL"):
+                st.code(msg["sql_query"], language="sql")
 
         show_download = False
         if msg.get("full_data"):
@@ -433,14 +551,27 @@ if prompt:
                         "data": data,
                         "answer": tab_resp.get("answer"),
                     }
-                    st.session_state.messages.append(
-                        {
-                            "role": "assistant",
-                            "type": "dataframe",
-                            "content": combined_content,
-                            "full_data": full_results,
-                        }
-                    )
+
+                    msg_dict = {
+                        "role": "assistant",
+                        "type": "dataframe",
+                        "content": combined_content,
+                        "full_data": full_results,
+                    }
+                    if result.get("generated_sql"):
+                        msg_dict["sql_query"] = result["generated_sql"].get("sql_query")
+                        msg_dict["thought_process"] = result["generated_sql"].get(
+                            "thought_process"
+                        )
+
+                        if msg_dict["thought_process"]:
+                            with st.expander("Thought Process"):
+                                st.write(msg_dict["thought_process"])
+                        if msg_dict["sql_query"]:
+                            with st.expander("Generated SQL"):
+                                st.code(msg_dict["sql_query"], language="sql")
+
+                    st.session_state.messages.append(msg_dict)
 
                 # Fallback to Natural Language
                 elif result.get("answer"):
@@ -476,14 +607,26 @@ if prompt:
                             key=f"download_full_new_nl_{len(st.session_state.messages)}",
                         )
 
-                    st.session_state.messages.append(
-                        {
-                            "role": "assistant",
-                            "type": "text",
-                            "content": answer,
-                            "full_data": full_results,
-                        }
-                    )
+                    msg_dict = {
+                        "role": "assistant",
+                        "type": "text",
+                        "content": answer,
+                        "full_data": full_results,
+                    }
+                    if result.get("generated_sql"):
+                        msg_dict["sql_query"] = result["generated_sql"].get("sql_query")
+                        msg_dict["thought_process"] = result["generated_sql"].get(
+                            "thought_process"
+                        )
+
+                        if msg_dict["thought_process"]:
+                            with st.expander("Thought Process"):
+                                st.write(msg_dict["thought_process"])
+                        if msg_dict["sql_query"]:
+                            with st.expander("Generated SQL"):
+                                st.code(msg_dict["sql_query"], language="sql")
+
+                    st.session_state.messages.append(msg_dict)
                 else:
                     st.error(
                         "An unexpected error occurred. No answer or table was generated."

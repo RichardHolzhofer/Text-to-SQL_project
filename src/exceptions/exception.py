@@ -138,3 +138,7 @@ class LangGraphExecutionError(MCPException):
 
 class GraphResponseError(MCPException):
     """Raised when the graph returns an invalid, empty, or unexpected response format."""
+
+
+class UIComponentLoadError(PipelineException):
+    """Raised when loading a UI component (CSS/HTML) fails."""
