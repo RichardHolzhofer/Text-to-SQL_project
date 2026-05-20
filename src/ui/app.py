@@ -61,6 +61,9 @@ if "thread_id" not in st.session_state:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+if "thread_titles" not in st.session_state:
+    st.session_state.thread_titles = {}
+
 
 # Initialize LangGraph Client
 @st.cache_resource
@@ -107,6 +110,9 @@ if st.session_state.user_id is None:
         st.markdown('<div style="padding-top: 1rem;"></div>', unsafe_allow_html=True)
         with st.container(border=True):
             st.subheader("Get Started")
+            st.caption(
+                "Password must be at least 6 characters. Please verify your registration in your inbox before using the app."
+            )
             auth_mode = st.radio(
                 "Mode",
                 ["Login", "Sign Up"],
@@ -117,7 +123,7 @@ if st.session_state.user_id is None:
             password = st.text_input("Password", type="password")
 
             if auth_mode == "Login":
-                if st.button("Login", use_container_width=True):
+                if st.button("Login", use_container_width=True, type="primary"):
                     success, message = db.sign_in(email, password)
                     if success:
                         st.session_state.user_id = db.user_id
@@ -127,7 +133,7 @@ if st.session_state.user_id is None:
                     else:
                         st.error(message)
             else:
-                if st.button("Sign Up", use_container_width=True):
+                if st.button("Sign Up", use_container_width=True, type="primary"):
                     success, message = db.sign_up(email, password)
                     if success:
                         st.success(message)
@@ -140,7 +146,7 @@ if st.session_state.user_id is None:
 with st.sidebar:
     st.header("Account")
     st.write(f"Logged in as: **{st.session_state.user_email}**")
-    if st.button("Logout", use_container_width=True):
+    if st.button("Logout", type="primary", use_container_width=True):
         db.sign_out()
         st.session_state.user_id = None
         st.session_state.user_email = None
@@ -189,12 +195,33 @@ if (
         st.rerun()
 
 # --- Sidebar: Controls ---
+# Generate/cache title for the active thread in the UI using fast_llm
+if st.session_state.thread_id and st.session_state.messages:
+    if st.session_state.thread_id not in st.session_state.thread_titles:
+        # Find the first user message
+        user_msgs = [m for m in st.session_state.messages if m.get("role") == "user"]
+        if user_msgs:
+            first_question = user_msgs[0]["content"]
+            try:
+                from src.utils.ui_utils import generate_chat_title
+
+                fast_llm = config.get_fast_llm()
+                title = generate_chat_title(fast_llm, first_question)
+                st.session_state.thread_titles[st.session_state.thread_id] = title
+            except Exception:
+                pass
+
 with st.sidebar:
     st.header("History")
     threads = db.get_threads()
     if threads:
         for t in threads:
-            title = t.get("title") or t["thread_id"]
+            # Display dynamic LLM generated title if cached, else fallback to database title
+            title = (
+                st.session_state.thread_titles.get(t["thread_id"])
+                or t.get("title")
+                or t["thread_id"]
+            )
             # Highlight the active thread by wrapping it in brackets or just bolding
             button_label = (
                 f"💬 **{title}**"
@@ -264,6 +291,7 @@ with st.sidebar:
     with col_sync:
         if st.button(
             "🔄 Sync Schema",
+            type="primary",
             help="Rebuilds the schema cache from Snowflake/dbt (takes ~2 mins)",
             use_container_width=True,
         ):
@@ -285,7 +313,7 @@ with st.sidebar:
                     status.update(label="Sync Failed", state="error")
                     st.error(f"Sync failed: {e}")
     with col_schema:
-        if st.button("Show Schema", use_container_width=True):
+        if st.button("Show Schema", type="primary", use_container_width=True):
             st.session_state.show_schema_modal = not st.session_state.get(
                 "show_schema_modal", False
             )
@@ -333,15 +361,9 @@ if st.session_state.get("show_schema_modal", False):
                     st.code(tree_str, language="text")
 
                     # Print ascii table
-                    desc_lines = t_data["description"].split("\n")
-                    desc = desc_lines[0].strip() if desc_lines else "No description"
-                    if len(desc) > 35:
-                        desc = desc[:32] + "..."
-
                     box_width = 50
                     table_str = f"┌{'─' * (box_width)}┐\n"
                     table_str += f"│ {t_name:<{box_width - 1}}│\n"
-                    table_str += f"│ {desc:<{box_width - 1}}│\n"
                     table_str += f"├{'─' * (box_width)}┤\n"
                     for col in cols:
                         tag_str = " ".join(col["tags"])

@@ -64,3 +64,21 @@ def load_and_filter_schema(
         return tables
     except Exception as e:
         raise YAMLProcessingError(e)
+
+
+def generate_chat_title(llm, question: str) -> str:
+    """Uses the provided LLM to generate a short title for the chat conversation."""
+    try:
+        from langchain_core.prompts import PromptTemplate
+
+        prompt = PromptTemplate.from_template(
+            "Generate a short title (maximum 5 words) for a chat conversation that starts with the following question: '{question}'\nTitle:"
+        )
+        chain = prompt | llm
+        response = chain.invoke({"question": question})
+        title = response.content.strip().replace('"', "")
+        if len(title.split()) > 7:
+            title = " ".join(title.split()[:5]) + "..."
+        return title
+    except Exception:
+        return question[:30] + "..."
