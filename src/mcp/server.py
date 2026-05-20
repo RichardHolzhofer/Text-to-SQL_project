@@ -202,17 +202,23 @@ class TextToSQLMCPServer:
                 with open(filepath, "w", encoding="utf-8") as f:
                     f.write(csv_data)
 
-                # Construct clickable file URL using host path if provided, fallback to relative path
+                # Construct a clean path for the user (without file:// to prevent Claude auto-ingestion)
                 host_project_path = os.getenv("HOST_PROJECT_PATH")
                 if host_project_path:
-                    # Ensure Windows path uses forward slashes for the file:// protocol
-                    clean_host_path = host_project_path.replace(os.sep, "/")
-                    if not clean_host_path.startswith("/"):
-                        clean_host_path = "/" + clean_host_path
-                    file_uri = f"file://{clean_host_path}/downloads/{filename}"
-                    download_link = f" The full dataset contains {len(full_results)} records. It has been exported to your workspace: [Open Full Results CSV]({file_uri}) (saved in your `downloads/` folder as `{filename}`)."
+                    # Provide the exact host path
+                    clean_host_path = host_project_path.replace("/", os.sep)
+                    file_uri = os.path.join(clean_host_path, "downloads", filename)
+                    download_link = (
+                        f" The full dataset contains {len(full_results)} records. "
+                        f"It has been exported to your workspace at the following local path (UTC timestamp):\n\n"
+                        f"`{file_uri}`\n\n"
+                        f"*(Copy and paste this path into your file explorer to open it)*"
+                    )
                 else:
-                    download_link = f" The full dataset contains {len(full_results)} records. It has been exported to your project workspace inside the container `downloads/{filename}`."
+                    download_link = (
+                        f" The full dataset contains {len(full_results)} records. "
+                        f"It has been exported inside the container at (UTC timestamp): `downloads/{filename}`."
+                    )
 
             # 3. Tabular answer
             if is_tabular and result.get("tabular_answer") is not None:
