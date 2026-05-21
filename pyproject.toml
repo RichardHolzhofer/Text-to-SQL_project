@@ -39,6 +39,8 @@ dependencies = [
     "mcp>=1.1.2",
     "fastmcp>=0.1.0",
     "uvicorn>=0.30.0",
+    "pytest>=9.0.3",
+    "pytest-mock>=3.15.1",
 ]
 
 [tool.ruff]
