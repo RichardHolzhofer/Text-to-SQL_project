@@ -7,8 +7,8 @@ from typing import Optional
 import pandas as pd
 import uvicorn
 from langgraph_sdk import get_sync_client
-
 from mcp.server.fastmcp import FastMCP
+
 from src.config.config import Config
 from src.database.db import SupabaseDB
 from src.exceptions.exception import (
