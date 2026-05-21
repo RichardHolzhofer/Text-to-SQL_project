@@ -40,7 +40,7 @@ except Exception as e:
 @st.cache_resource
 def get_db():
     config = Config()
-    # Initialize Langfuse via Config to set up the singleton for the session
+    # Initialize Langfuse via Config
     config.get_langfuse()
     return SupabaseDB(config), config
 
@@ -83,7 +83,7 @@ def get_nodes():
 nodes = get_nodes()
 
 
-# --- Authentication & Landing Page ---
+# Authentication & Landing Page
 if st.session_state.user_id is None:
     st.markdown(
         '<h1 class="landing-title">Query<span class="accent-text">Graph</span></h1>',
@@ -142,7 +142,7 @@ if st.session_state.user_id is None:
 
     st.stop()
 
-# --- Sidebar: Account ---
+# Sidebar: Account
 with st.sidebar:
     st.header("Account")
     st.write(f"Logged in as: **{st.session_state.user_email}**")
@@ -177,11 +177,11 @@ with st.sidebar:
 
 st.title("QueryGraph")
 
-# Ensure the database instance knows who the current user is (for session-based calls)
+# Ensure the database instance knows who the current user is
 db.user_id = st.session_state.user_id
 db.user_email = st.session_state.user_email
 
-# --- Auto-load last session if starting fresh (and not explicitly requesting a new one) ---
+# Auto-load last session if starting fresh
 if (
     st.session_state.user_id
     and not st.session_state.messages
@@ -194,7 +194,7 @@ if (
         st.session_state.messages = db.load_chat_history(latest_thread_id)
         st.rerun()
 
-# --- Sidebar: Controls ---
+# Sidebar: Controls
 # Generate/cache title for the active thread in the UI using fast_llm
 if st.session_state.thread_id and st.session_state.messages:
     if st.session_state.thread_id not in st.session_state.thread_titles:
