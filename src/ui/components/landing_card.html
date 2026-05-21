@@ -1,0 +1,24 @@
+<div class="glass-card" style="margin-top: 1rem;">
+    <div style="display: flex; gap: 8px; margin-bottom: 20px;">
+        <div style="width: 12px; height: 12px; border-radius: 50%; background: #ef4444;"></div>
+        <div style="width: 12px; height: 12px; border-radius: 50%; background: #eab308;"></div>
+        <div style="width: 12px; height: 12px; border-radius: 50%; background: #22c55e;"></div>
+    </div>
+    <div style="font-family: 'Inter', monospace; color: #94a3b8; margin-bottom: 1rem; font-size: 0.95rem;">
+        <span style="color: #8b5cf6;">></span> User: Show me the top 5 customers by revenue this year
+    </div>
+    <div style="background: rgba(15, 23, 42, 0.6); padding: 1.5rem; border-radius: 8px; font-family: monospace; color: #3b82f6; margin-bottom: 1.5rem; border: 1px solid rgba(255,255,255,0.05);">
+        SELECT <br>
+        &nbsp;&nbsp;c.customer_name, <br>
+        &nbsp;&nbsp;SUM(o.total_amount) as revenue<br>
+        FROM customers c<br>
+        JOIN orders o ON c.id = o.customer_id<br>
+        WHERE EXTRACT(YEAR FROM o.order_date) = EXTRACT(YEAR FROM CURRENT_DATE)<br>
+        GROUP BY 1 <br>
+        ORDER BY 2 DESC <br>
+        LIMIT 5;
+    </div>
+    <div style="color: #cbd5e0; line-height: 1.6; font-size: 1.05rem;">
+        <strong>QueryGraph</strong> instantly translates your natural language into optimized SQL, executes it securely, and returns the insights you need without writing a single line of code.
+    </div>
+</div>
