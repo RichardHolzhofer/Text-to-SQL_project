@@ -18,6 +18,8 @@ dependencies = [
     "python-dotenv>=1.2.2",
     "ruff>=0.15.10",
     "snowflake-connector-python>=4.4.0",
+    "urllib3<2",
+    "charset-normalizer<3",
     "sqlfluff-templater-dbt>=4.1.0",
     "sqlfluff>=4.1.0",
     "langchain-groq>=1.1.2",
@@ -32,7 +34,7 @@ dependencies = [
     "langchain-openai>=1.2.1",
     "langgraph-cli[inmem]>=0.4.25",
     "langgraph-sdk>=0.3.13",
-    "llm-guard>=0.3.15",
+    "llm-guard>=0.3.10",
     "transformers<5.0.0",
     "optimum[onnxruntime]>=1.16.2",
     "onnxruntime>=1.17.1",
@@ -48,5 +50,12 @@ lint.select = ["E", "F", "I"]
 lint.ignore = ["E501"]
 
 [tool.pytest.ini_options]
-pythonpath = ["."]
+pythonpath = ". src"
+addopts = "-v -ra --strict-markers"
 testpaths = ["tests"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning",
+    "ignore:.*doesn't match a supported version!.*",
+]
+
