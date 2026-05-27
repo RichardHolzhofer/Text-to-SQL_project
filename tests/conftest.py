@@ -5,6 +5,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from src.config.config import Config
+from src.database.db import SupabaseDB
 
 
 @pytest.fixture
@@ -34,7 +35,8 @@ def minimal_required_env():
     }
     with patch.dict(os.environ, env, clear=True):
         yield env
-        
+
+
 @pytest.fixture
 def config(minimal_required_env):
     with patch.dict(os.environ, minimal_required_env, clear=True):
@@ -47,6 +49,20 @@ def mock_supabase_factory():
         client = Mock(name="supabase_client")
         mock_create_client.return_value = client
         yield mock_create_client, client
+
+
+@pytest.fixture
+def mock_db(config):
+    mock_auth = Mock()
+
+    mock_supabase = Mock()
+    mock_supabase.auth = mock_auth
+
+    config.get_supabase_connection = Mock(return_value=mock_supabase)
+
+    db = SupabaseDB(config)
+
+    return db, mock_supabase, mock_auth
 
 
 @pytest.fixture
