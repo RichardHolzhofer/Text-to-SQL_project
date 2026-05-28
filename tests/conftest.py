@@ -1,11 +1,12 @@
 import os
-from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
 from src.config.config import Config
 from src.database.db import SupabaseDB
+from src.nodes.node import TextToSQLNodes
+from src.states.state import Column, SQLGenerator, Table
 
 
 @pytest.fixture
@@ -66,15 +67,122 @@ def mock_db(config):
 
 
 @pytest.fixture
-def sample_state_factory():
+def mock_run_prompt():
+    with patch("src.nodes.node.run_prompt") as mock_run_prompt:
+        yield mock_run_prompt
+
+
+@pytest.fixture
+def node(config):
+    with patch("src.nodes.node.SupabaseDB"):
+        yield TextToSQLNodes(config)
+
+
+@pytest.fixture
+def mock_load_yaml():
+    with patch("src.nodes.node.load_yaml") as mock_load_yaml:
+        yield mock_load_yaml
+
+
+@pytest.fixture
+def mock_dump_yaml():
+    with patch("src.nodes.node.dump_yaml") as mock_dump_yaml:
+        yield mock_dump_yaml
+
+
+@pytest.fixture
+def mock_schema_validate():
+    with patch("src.nodes.node.Schema.model_validate") as mock_validate:
+        yield mock_validate
+
+
+@pytest.fixture
+def table_factory():
+    def _factory(**overrides):
+        data = {
+            "table_name": "customers",
+            "description": "customer table",
+            "grain": "one row per customer",
+            "primary_key": ["customer_id"],
+            "columns": [
+                Column(
+                    column_name="customer_id",
+                    description="customer id",
+                )
+            ],
+        }
+
+        data.update(overrides)
+
+        return Table(**data)
+
+    return _factory
+
+
+@pytest.fixture
+def sql_generator_factory():
     def _factory(**overrides):
         base = {
-            "router": None,
-            "answer": None,
-            "is_general_conversation": False,
-            "validator": None,
+            "sql_query": "SELECT 1",
+            "thought_process": "thinking...",
+            "fuzzy_match_warning": None,
+            "search_concept": None,
+            "query_vector": None,
+            "unsupported_explanation": None,
         }
         base.update(overrides)
-        return SimpleNamespace(**base)
+        return SQLGenerator(**base)
+
+    return _factory
+
+
+@pytest.fixture
+def mock_snowflake_connection():
+    mock_cursor = Mock()
+
+    mock_cursor_cm = MagicMock()
+    mock_cursor_cm.__enter__.return_value = mock_cursor
+    mock_cursor_cm.__exit__.return_value = None
+
+    mock_conn = MagicMock()
+    mock_conn.cursor.return_value = mock_cursor_cm
+
+    mock_conn.__enter__.return_value = mock_conn
+    mock_conn.__exit__.return_value = None
+
+    return mock_conn, mock_cursor
+
+
+@pytest.fixture
+def validator_factory():
+    def _factory(**overrides):
+        base = {
+            "is_valid_query": True,
+            "error_message": None,
+            "iteration_count": 0,
+        }
+
+        base.update(overrides)
+
+        def create_validator(data):
+            v = Mock()
+
+            v.is_valid_query = data["is_valid_query"]
+            v.error_message = data["error_message"]
+            v.iteration_count = data["iteration_count"]
+
+            def model_copy(update=None):
+                new_data = data.copy()
+
+                if update:
+                    new_data.update(update)
+
+                return create_validator(new_data)
+
+            v.model_copy.side_effect = model_copy
+
+            return v
+
+        return create_validator(base)
 
     return _factory
