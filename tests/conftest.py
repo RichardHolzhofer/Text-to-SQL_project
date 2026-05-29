@@ -5,6 +5,7 @@ import pytest
 
 from src.config.config import Config
 from src.database.db import SupabaseDB
+from src.mcp.server import TextToSQLMCPServer
 from src.nodes.node import TextToSQLNodes
 from src.states.state import Column, SQLGenerator, Table
 
@@ -186,3 +187,52 @@ def validator_factory():
         return create_validator(base)
 
     return _factory
+
+
+@pytest.fixture
+def mock_template():
+    template = Mock()
+
+    template.metadata = {}
+
+    template.messages = []
+
+    return template
+
+
+@pytest.fixture
+def mock_llm():
+    llm = Mock()
+
+    llm.bind.return_value = llm
+    llm.with_structured_output.return_value = llm
+
+    return llm
+
+
+@pytest.fixture
+def mock_chain():
+    chain = Mock()
+
+    chain.invoke.return_value = "response"
+
+    return chain
+
+
+@pytest.fixture
+def mcp_server():
+    return TextToSQLMCPServer()
+
+
+@pytest.fixture
+def mock_langgraph_client():
+    """
+    Mocks the LangGraph SDK client returned by get_sync_client().
+    """
+    mock_client = Mock()
+
+    with patch(
+        "src.mcp.server.get_sync_client",
+        return_value=mock_client,
+    ) as mock_get_client:
+        yield mock_get_client, mock_client
