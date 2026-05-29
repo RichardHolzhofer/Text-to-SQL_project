@@ -2,10 +2,25 @@
 
 html, body, [class*="css"] {
     font-family: 'Inter', sans-serif;
+    color: #334155;
 }
 
+/* App Background (Vibrant Light Pastel Blue) */
 .stApp {
-    background-color: #0b0f19;
+    background-color: #e0f2fe !important;
+}
+
+/* Sidebar panel background matches the app background */
+[data-testid="stSidebar"], [data-testid="stSidebar"] > div {
+    background-color: #e0f2fe !important;
+    border-right: 1px solid rgba(2, 132, 199, 0.1) !important;
+}
+
+/* Header & Footer panel background alignment */
+header[data-testid="stHeader"], [data-testid="stHeader"], footer, [data-testid="stDecoration"] {
+    background-color: #e0f2fe !important;
+    background: #e0f2fe !important;
+    border: none !important;
 }
 
 /* Make the top padding smaller for landing page */
@@ -14,51 +29,53 @@ html, body, [class*="css"] {
 }
 
 .glass-card {
-    background: rgba(30, 41, 59, 0.5);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: #ffffff; /* Clean white card to contrast with pastel background */
+    border: 1px solid rgba(2, 132, 199, 0.15);
+    border-top: 4px solid #f97316; /* Orange top accent border line */
     border-radius: 16px;
     padding: 2rem;
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 10px 30px rgba(2, 132, 199, 0.08), 0 1px 3px rgba(2, 132, 199, 0.03);
 }
 
 .accent-text {
-    background: -webkit-linear-gradient(45deg, #8b5cf6 0%, #3b82f6 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #f97316; /* Solid bright orange for 'Graph' */
+    background: none;
+    -webkit-background-clip: initial;
+    -webkit-text-fill-color: initial;
+    font-weight: 800;
 }
 
 .landing-title {
     font-size: 4.5rem;
     font-weight: 800;
     margin-bottom: 0.5rem;
-    color: #f8fafc;
+    color: #0284c7; /* Brand 'Query' part in Blue */
     line-height: 1.1;
 }
 
 .landing-subtitle {
     font-size: 1.5rem;
     font-weight: 300;
-    color: #94a3b8;
+    color: #475569;
     margin-bottom: 3rem;
 }
 
-/* Streamlit Input Styling */
-.stTextInput input {
-    background-color: rgba(30, 41, 59, 0.5) !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    color: white !important;
+/* Streamlit Input & Chatbox input Styling (Soft light-blue background) */
+.stTextInput input, [data-testid="stChatInput"] textarea {
+    background-color: #f0f7ff !important;
+    border: 1px solid #bae6fd !important; /* Pastel blue border instead of grey */
+    color: #0f172a !important;
     border-radius: 8px !important;
 }
-.stTextInput input:focus {
-    border-color: #3b82f6 !important;
-    box-shadow: 0 0 0 1px #3b82f6 !important;
+.stTextInput input:focus, [data-testid="stChatInput"] textarea:focus {
+    border-color: #f97316 !important;
+    box-shadow: 0 0 0 1px #f97316 !important;
+    background-color: #ffffff !important; /* Switch to crisp white on focus for maximum readability */
 }
 
-/* Primary Streamlit Button Styling */
+/* Primary Streamlit Button Styling (Solid Orange) */
 button[kind="primary"] {
-    background: linear-gradient(45deg, #8b5cf6 0%, #3b82f6 100%) !important;
+    background: #f97316 !important;
     color: white !important;
     border: none !important;
     border-radius: 8px !important;
@@ -66,7 +83,22 @@ button[kind="primary"] {
     transition: all 0.3s ease !important;
 }
 button[kind="primary"]:hover {
-    opacity: 0.9 !important;
+    background: #ea580c !important;
     transform: translateY(-1px) !important;
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+    box-shadow: 0 4px 12px rgba(249, 115, 22, 0.25) !important;
+}
+
+/* Secondary Streamlit / Trashcan Button Styling */
+button[kind="secondary"] {
+    background-color: #ffffff !important;
+    color: #475569 !important;
+    border: 1px solid #bae6fd !important;
+    border-radius: 8px !important;
+    transition: all 0.3s ease !important;
+}
+button[kind="secondary"]:hover {
+    color: #0284c7 !important; /* Elegant blue feedback on hover */
+    border-color: #0284c7 !important;
+    background-color: #f0f7ff !important;
+    box-shadow: 0 2px 8px rgba(2, 132, 199, 0.1) !important;
 }

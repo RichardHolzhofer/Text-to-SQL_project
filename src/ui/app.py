@@ -175,7 +175,10 @@ with st.sidebar:
 
     st.markdown("---")
 
-st.title("QueryGraph")
+st.markdown(
+    '<h1 class="landing-title" style="font-size: 3rem; margin-top: 1rem; margin-bottom: 2rem;">Query<span class="accent-text">Graph</span></h1>',
+    unsafe_allow_html=True,
+)
 
 # Ensure the database instance knows who the current user is
 db.user_id = st.session_state.user_id
