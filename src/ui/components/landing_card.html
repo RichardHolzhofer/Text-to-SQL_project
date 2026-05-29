@@ -1,24 +1,30 @@
-<div class="glass-card" style="margin-top: 1rem;">
-    <div style="display: flex; gap: 8px; margin-bottom: 20px;">
-        <div style="width: 12px; height: 12px; border-radius: 50%; background: #ef4444;"></div>
-        <div style="width: 12px; height: 12px; border-radius: 50%; background: #eab308;"></div>
-        <div style="width: 12px; height: 12px; border-radius: 50%; background: #22c55e;"></div>
+<div class="glass-card" style="margin-top: 1rem; border-top: 4px solid #f97316;">
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #f1f5f9;">
+        <div style="display: flex; gap: 8px; color: #94a3b8; font-size: 1rem; user-select: none; font-weight: bold;">
+            <span style="cursor: default;">←</span>
+            <span style="cursor: default;">→</span>
+            <span style="cursor: default; font-size: 0.95rem; margin-left: 2px;">↻</span>
+        </div>
+        <div style="flex-grow: 1; background: #f8fafc; border-radius: 6px; padding: 4px 12px; font-family: 'Inter', sans-serif; font-size: 0.85rem; color: #64748b; display: flex; align-items: center; gap: 6px; border: 1px solid #e2e8f0;">
+            <span style="color: #10b981; font-size: 0.8rem;">🔒</span>
+            <span>querygraph.app/demo</span>
+        </div>
     </div>
-    <div style="font-family: 'Inter', monospace; color: #94a3b8; margin-bottom: 1rem; font-size: 0.95rem;">
-        <span style="color: #8b5cf6;">></span> User: Show me the top 5 customers by revenue this year
+    <div style="font-family: 'Inter', sans-serif; color: #334155; margin-bottom: 1rem; font-size: 0.95rem; font-weight: 500;">
+        <span style="color: #f97316; font-weight: bold; margin-right: 4px;">></span> User: Show me the top 5 customers by revenue this year
     </div>
-    <div style="background: rgba(15, 23, 42, 0.6); padding: 1.5rem; border-radius: 8px; font-family: monospace; color: #3b82f6; margin-bottom: 1.5rem; border: 1px solid rgba(255,255,255,0.05);">
-        SELECT <br>
+    <div style="background: #f0f7ff; padding: 1.5rem; border-radius: 8px; font-family: 'Courier New', Courier, monospace; font-size: 0.95rem; color: #0f172a; margin-bottom: 1.5rem; border: 1px solid #bae6fd; line-height: 1.5; font-weight: 600;">
+        <span style="color: #ea580c;">SELECT</span> <br>
         &nbsp;&nbsp;c.customer_name, <br>
-        &nbsp;&nbsp;SUM(o.total_amount) as revenue<br>
-        FROM customers c<br>
-        JOIN orders o ON c.id = o.customer_id<br>
-        WHERE EXTRACT(YEAR FROM o.order_date) = EXTRACT(YEAR FROM CURRENT_DATE)<br>
-        GROUP BY 1 <br>
-        ORDER BY 2 DESC <br>
-        LIMIT 5;
+        &nbsp;&nbsp;<span style="color: #0284c7;">SUM</span>(o.total_amount) <span style="color: #ea580c;">as</span> revenue<br>
+        <span style="color: #ea580c;">FROM</span> customers c<br>
+        <span style="color: #ea580c;">JOIN</span> orders o <span style="color: #ea580c;">ON</span> c.id = o.customer_id<br>
+        <span style="color: #ea580c;">WHERE</span> <span style="color: #0284c7;">EXTRACT</span>(YEAR <span style="color: #ea580c;">FROM</span> o.order_date) = <span style="color: #0284c7;">EXTRACT</span>(YEAR <span style="color: #ea580c;">FROM</span> <span style="color: #0284c7;">CURRENT_DATE</span>)<br>
+        <span style="color: #ea580c;">GROUP BY</span> 1 <br>
+        <span style="color: #ea580c;">ORDER BY</span> 2 <span style="color: #ea580c;">DESC</span> <br>
+        <span style="color: #ea580c;">LIMIT</span> 5;
     </div>
-    <div style="color: #cbd5e0; line-height: 1.6; font-size: 1.05rem;">
-        <strong>QueryGraph</strong> instantly translates your natural language into optimized SQL, executes it securely, and returns the insights you need without writing a single line of code.
+    <div style="color: #475569; line-height: 1.6; font-size: 1.05rem;">
+        <strong style="color: #0284c7;">QueryGraph</strong> translates your natural language into optimized SQL, executes it securely, and returns insights instantly without writing code.
     </div>
 </div>
