@@ -35,6 +35,7 @@ def minimal_required_env():
         "LANGFUSE_PUBLIC_KEY": "pk_test",
         "LANGFUSE_SECRET_KEY": "sk_test",
         "OPENAI_API_KEY": "test_openai_key",
+        "GROQ_API_KEY": "test_groq_key",
     }
     with patch.dict(os.environ, env, clear=True):
         yield env

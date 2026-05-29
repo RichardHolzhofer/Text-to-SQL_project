@@ -1,14 +1,17 @@
-name: CI
+name: Model Correctness Evaluation
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for running the evaluation'
+        required: false
+        type: string
+        default: 'Manual accuracy check'
 
 jobs:
-  ci:
-    name: Linting and Prompt Sync
+  evaluate:
+    name: DeepEval Correctness Suite
     runs-on: ubuntu-latest
     
     env:
@@ -56,18 +59,5 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras --dev
 
-      - name: Ruff Check
-        run: uv run ruff check .
-
-      - name: Ruff Format
-        run: uv run ruff format --check .
-
-      - name: SQLFluff Lint
-        run: uv run sqlfluff lint . --dialect snowflake
-
-      - name: Run Unit Tests
-        run: uv run pytest tests/ --ignore=tests/correctness/
-
-      - name: Sync Prompts (Push to main only)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: uv run python sync_prompts.py --push
+      - name: Run Correctness Eval Tests (DeepEval)
+        run: uv run deepeval test run tests/correctness/test_correctness.py
