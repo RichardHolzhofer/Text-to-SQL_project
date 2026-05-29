@@ -5,6 +5,7 @@ import pytest
 
 from src.config.config import Config
 from src.database.db import SupabaseDB
+from src.graph_builder.graph_builder import TextToSQLGraph
 from src.mcp.server import TextToSQLMCPServer
 from src.nodes.node import TextToSQLNodes
 from src.states.state import Column, SQLGenerator, Table
@@ -236,3 +237,14 @@ def mock_langgraph_client():
         return_value=mock_client,
     ) as mock_get_client:
         yield mock_get_client, mock_client
+
+
+@pytest.fixture
+def graph():
+    g = TextToSQLGraph()
+
+    g.config = Mock()
+    g.nodes = Mock()
+    g.nodes.max_retry = 3
+
+    return g
