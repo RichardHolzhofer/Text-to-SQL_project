@@ -80,25 +80,3 @@ def run_prompt(
         # Catch any other unexpected errors
         logger.exception(f"Unexpected error in run_prompt for '{prompt_name}': {e}")
         raise LLMInvocationError(e) from e
-
-
-def generate_conversation_title(config, question: str) -> str:
-    """
-    Generates a concise title for the conversation using the fast LLM from config.
-    """
-    try:
-        response = run_prompt(
-            prompt_name="generate_title",
-            variables={"question": question},
-            config=config,
-            use_fast_llm=True,
-        )
-        # Handle both AIMessage and raw content
-        content = response.content if hasattr(response, "content") else str(response)
-        title = content.strip().replace('"', "")
-
-        logger.info(f"Generated conversation title: '{title}'")
-        return title
-    except Exception as e:
-        logger.error(f"Title generation failed: {e}")
-        return f"{question[:25]}..."

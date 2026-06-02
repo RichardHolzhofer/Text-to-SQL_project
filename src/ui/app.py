@@ -11,7 +11,7 @@ from src.database.db import SupabaseDB
 from src.exceptions.exception import UIComponentLoadError, YAMLProcessingError
 from src.nodes.node import TextToSQLNodes
 from src.states.state import TextToSQLState
-from src.utils.ui_utils import load_and_filter_schema
+from src.utils.ui_utils import generate_chat_title, load_and_filter_schema
 
 
 @st.cache_data
@@ -198,21 +198,6 @@ if (
         st.rerun()
 
 # Sidebar: Controls
-# Generate/cache title for the active thread in the UI using fast_llm
-if st.session_state.thread_id and st.session_state.messages:
-    if st.session_state.thread_id not in st.session_state.thread_titles:
-        # Find the first user message
-        user_msgs = [m for m in st.session_state.messages if m.get("role") == "user"]
-        if user_msgs:
-            first_question = user_msgs[0]["content"]
-            try:
-                from src.utils.ui_utils import generate_chat_title
-
-                fast_llm = config.get_fast_llm()
-                title = generate_chat_title(fast_llm, first_question)
-                st.session_state.thread_titles[st.session_state.thread_id] = title
-            except Exception:
-                pass
 
 with st.sidebar:
     st.header("History")
@@ -657,7 +642,22 @@ if prompt:
                         "An unexpected error occurred. No answer or table was generated."
                     )
 
-                # --- No need to generate title here as backend creates thread with title ---
+                # Generate title after the first message in a new conversation
+                if st.session_state.thread_id not in st.session_state.thread_titles:
+                    user_msgs = [
+                        m for m in st.session_state.messages if m.get("role") == "user"
+                    ]
+                    if user_msgs:
+                        try:
+                            fast_llm = config.get_fast_llm()
+                            title = generate_chat_title(
+                                fast_llm, user_msgs[0]["content"]
+                            )
+                            st.session_state.thread_titles[
+                                st.session_state.thread_id
+                            ] = title
+                        except Exception:
+                            pass
 
             except Exception as e:
                 error_msg = f"Error invoking graph: {str(e)}"

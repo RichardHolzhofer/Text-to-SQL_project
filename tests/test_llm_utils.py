@@ -6,7 +6,7 @@ from src.exceptions.exception import (
     LLMInvocationError,
     LLMTemplateError,
 )
-from src.utils.llm_utils import generate_conversation_title, run_prompt
+from src.utils.llm_utils import run_prompt
 
 
 def test_run_prompt_success(
@@ -253,87 +253,3 @@ def test_run_prompt_invocation_error(
                 variables={},
                 config=config,
             )
-
-
-def test_generate_conversation_title_success(config):
-    mock_response = Mock()
-    mock_response.content = '  "Sales Analysis"  '
-
-    with patch(
-        "src.utils.llm_utils.run_prompt",
-        return_value=mock_response,
-    ) as mock_run_prompt:
-        result = generate_conversation_title(
-            config,
-            "Show me sales trends",
-        )
-
-    assert result == "Sales Analysis"
-
-    mock_run_prompt.assert_called_once_with(
-        prompt_name="generate_title",
-        variables={
-            "question": "Show me sales trends",
-        },
-        config=config,
-        use_fast_llm=True,
-    )
-
-
-def test_generate_conversation_title_raw_response(config):
-    with patch(
-        "src.utils.llm_utils.run_prompt",
-        return_value="Revenue Summary",
-    ):
-        result = generate_conversation_title(
-            config,
-            "Revenue question",
-        )
-
-    assert result == "Revenue Summary"
-
-
-def test_generate_conversation_title_fallback(config):
-    question = "What are the total sales by category?"
-
-    with patch(
-        "src.utils.llm_utils.run_prompt",
-        side_effect=Exception("LLM failed"),
-    ):
-        result = generate_conversation_title(
-            config,
-            question,
-        )
-
-    assert result == f"{question[:25]}..."
-
-
-def test_generate_conversation_title_fallback_short_question(config):
-    question = "Hello"
-
-    with patch(
-        "src.utils.llm_utils.run_prompt",
-        side_effect=Exception("LLM failed"),
-    ):
-        result = generate_conversation_title(
-            config,
-            question,
-        )
-
-    assert result == "Hello..."
-
-
-def test_generate_conversation_title_without_quotes(config):
-    mock_response = Mock()
-    mock_response.content = "Customer Retention"
-
-    with patch(
-        "src.utils.llm_utils.run_prompt",
-        return_value=mock_response,
-    ):
-        result = generate_conversation_title(
-            config,
-            "Retention question",
-        )
-
-    assert result == "Customer Retention"
