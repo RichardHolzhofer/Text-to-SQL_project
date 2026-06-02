@@ -1,7 +1,12 @@
+import json
+
 from tqdm import tqdm
 
-from embeddings.config import config, logger
+from src.config.config import Config
 from src.exceptions.exception import EmbeddingCreationError
+
+config = Config(logger_name="embeddings")
+logger = config.get_logger()
 
 
 def create_embeddings(
@@ -30,12 +35,12 @@ def create_embeddings(
         conn = config.get_snowflake_connection(write_access=True)
         cursor = conn.cursor()
 
-        # Create or replace the side table with OpenAI dimensions (1536)
+        # Create or replace the side table with OpenAI dimensions (dynamic from config)
         cursor.execute(
             f"""
             CREATE OR REPLACE TABLE {target_schema}.{target_table} (
                 {id_column} TEXT PRIMARY KEY,
-                {embedding_column} VECTOR(FLOAT, 1536)
+                {embedding_column} VECTOR(FLOAT, {config.embedding_vector_dim})
             )
             """
         )
@@ -54,36 +59,45 @@ def create_embeddings(
         logger.info(f"Found {total_rows} rows to embed.")
 
         embedding_model = config.get_embedding_model()
+        # Use configured embedding vector dimension (allow override via env vars)
+        vector_dim = config.embedding_vector_dim
 
         # Process in batches
+        # We do this to reduce the number of OpenAI API ans Snowflake
+        # calls to save cost and time and to avoide rate limit
         for i in tqdm(range(0, total_rows, batch_size), desc="Embedding batches"):
             batch = rows[i : i + batch_size]
             ids = [row[0] for row in batch]
             texts = [row[1] for row in batch]
 
             try:
-                # Generate embeddings
+                # Generate embeddings for the current batch of texts
                 embeddings = embedding_model.embed_documents(texts)
 
-                # Prepare for bulk insert
-                import json
+                placeholders: list[str] = []
+                params: list = []
 
-                placeholders = []
-                params = []
                 for idx, vector in zip(ids, embeddings):
                     placeholders.append("(%s, %s)")
+                    # Convert the vector (list[float]) to a JSON string so that
+                    # Snowflake can parse it safely (handles special chars).
                     params.extend([idx, json.dumps(vector)])
 
-                # Use single execute with flattened parameters for correct VECTOR casting
-                query = (
-                    f"INSERT INTO {target_schema}.{target_table} ({id_column}, {embedding_column}) SELECT column1, PARSE_JSON(column2)::VECTOR(FLOAT, 1536) FROM VALUES "
-                    + ", ".join(placeholders)
-                )
+                # Build the VALUES clause for a bulk INSERT.
+                # Each row is represented by a placeholder tuple "(%s, %s)".
+                # `COLUMN1` (the first placeholder) will hold the primary‑key `id`.
+                # `COLUMN2` (the second placeholder) will hold the embedding vector
+                # Snowflake will later parse it and cast it to VECTOR(FLOAT, {vector_dim}).
+
+                query = f"""INSERT INTO {target_schema}.{target_table}
+                ({id_column}, {embedding_column})
+                SELECT COLUMN1,
+                       PARSE_JSON(COLUMN2)::VECTOR(FLOAT, {vector_dim})
+                FROM VALUES {", ".join(placeholders)}"""
                 cursor.execute(query, params)
 
             except Exception as e:
                 logger.error(f"Error processing batch starting at index {i}: {e}")
-                # Optional: implement retry or break
                 raise e
 
         logger.info(

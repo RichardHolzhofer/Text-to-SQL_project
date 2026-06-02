@@ -68,6 +68,10 @@ class Config:
             self.smart_model = os.getenv("SMART_LLM_MODEL")
             self.fast_model = os.getenv("FAST_LLM_MODEL")
             self.embedding_model = os.getenv("EMBEDDING_MODEL")
+            # Vector dimension for embedding model (default 1536). Override via EMBEDDING_VECTOR_DIM or VECTOR_DIM.
+            self.embedding_vector_dim = int(
+                os.getenv("EMBEDDING_VECTOR_DIM") or os.getenv("VECTOR_DIM", "1536")
+            )
             self.langgraph_url = os.getenv("LANGGRAPH_URL", "http://localhost:2024")
             self.temperature = self._parse_float_env("LLM_TEMPERATURE", default=0.0)
 
