@@ -40,6 +40,9 @@ class TextToSQLMCPServer:
             """
             return self.query_database(query, thread_id)
 
+        # Create the Starlette ASGI application using Server-Sent Events (SSE)
+        self.app = self.mcp.sse_app()
+
     def query_database(self, query: str, thread_id: Optional[str] = None) -> str:
         """
         Business logic implementation for querying the e-commerce database.
@@ -61,7 +64,8 @@ class TextToSQLMCPServer:
                     )
                 )
         else:
-            # Run silent dynamic login/registration sequence
+            # TRY-EXCEPT BLOCK 1: Dynamic User Authentication Flow
+            # Attempt to sign in or auto-register the user with Supabase dynamically.
             try:
                 db = SupabaseDB(self.config)
                 success, message = db.sign_in(user_email, user_password)
@@ -93,6 +97,8 @@ class TextToSQLMCPServer:
                 active_user_email = db.user_email
 
             except Exception as auth_err:
+                # Catch verification pending errors specifically to inform the user
+                # that they must click the confirmation link in their email inbox.
                 err_msg = str(auth_err).lower()
                 if (
                     "confirm" in err_msg
@@ -111,7 +117,10 @@ class TextToSQLMCPServer:
                     Exception(f"Silent user authentication failed: {str(auth_err)}")
                 )
 
+        # TRY-EXCEPT BLOCK 2 (Outer): Main execution wrapper to catch all runtime/pipeline failures
+        # and return them as friendly text messages instead of crashing the MCP server.
         try:
+            # TRY-EXCEPT BLOCK 3 (Inner): LangGraph client connection and thread initialization
             try:
                 client = get_sync_client(url=self.config.langgraph_url)
 
@@ -144,7 +153,7 @@ class TextToSQLMCPServer:
                 "run_name": "text-to-sql-mcp",
             }
 
-            # Invoke the graph run via LangGraph API client
+            # TRY-EXCEPT BLOCK 4 (Inner): LangGraph workflow run execution
             try:
                 result = client.runs.wait(
                     active_thread_id,
@@ -264,27 +273,8 @@ class TextToSQLMCPServer:
         except Exception as e:
             return f"Unexpected Error: {str(e)}"
 
-    def get_asgi_app(self):
-        """
-        Creates and returns the Starlette ASGI application with cascading SDK fallbacks.
-        """
-        try:
-            return self.mcp.sse_app()
-        except AttributeError:
-            try:
-                return self.mcp.http_app()
-            except AttributeError:
-                try:
-                    return self.mcp.asgi()
-                except AttributeError:
-                    try:
-                        return self.mcp.create_asgi_app()
-                    except AttributeError:
-                        return self.mcp
-
 
 if __name__ == "__main__":
     print("Starting Text-to-SQL FastMCP Server...", file=sys.stderr)
     server = TextToSQLMCPServer()
-    app = server.get_asgi_app()
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(server.app, host="0.0.0.0", port=8000)
