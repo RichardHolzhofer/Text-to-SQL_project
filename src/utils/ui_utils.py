@@ -1,8 +1,12 @@
 import os
 
 import yaml
+from langchain_core.prompts import PromptTemplate
 
 from src.exceptions.exception import YAMLProcessingError
+from src.logger.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def load_and_filter_schema(
@@ -69,8 +73,6 @@ def load_and_filter_schema(
 def generate_chat_title(llm, question: str) -> str:
     """Uses the provided LLM to generate a short title for the chat conversation."""
     try:
-        from langchain_core.prompts import PromptTemplate
-
         prompt = PromptTemplate.from_template(
             "Generate a short title (maximum 5 words) for a chat conversation that starts with the following question: '{question}'\nTitle:"
         )
@@ -80,5 +82,6 @@ def generate_chat_title(llm, question: str) -> str:
         if len(title.split()) > 7:
             title = " ".join(title.split()[:5]) + "..."
         return title
-    except Exception:
+    except Exception as e:
+        logger.warning("generate_chat_title failed, using fallback: %s", e)
         return question[:30] + "..."
